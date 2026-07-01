@@ -1,6 +1,10 @@
-### Tech & Framework Challenge — IoT Theme
+# Tech & Framework Challenge
 
-> An intelligent stress detection and relief system that combines Apple frameworks with IoT to transform a smart pillow into an interactive stress-relief companion.
+> A project-based challenge focused on exploring Apple's technologies and frameworks by designing and building innovative applications that solve real-world problems.
+
+This repository documents our team's journey throughout the **Tech & Framework Challenge**, where each team selects a technology theme, researches Apple's frameworks, explores different approaches, and develops a solution while documenting the entire engineering process—from initial assumptions to the final design decisions.
+
+For this challenge, our team chose the **Internet of Things (IoT)** theme and built **StressLess**, an application that integrates Apple frameworks with an IoT-enabled smart pillow to provide an interactive stress detection and relief experience.
 
 ---
 
