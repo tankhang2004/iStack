@@ -16,6 +16,17 @@ Our project explores how Apple frameworks can be combined with Internet of Thing
 
 ---
 
+# ✨ Key Features
+
+- ❤️ Continuous heart rate monitoring using Apple Watch
+- 🧍 Stationary activity detection with Core Motion
+- 📡 BLE communication with an ESP32-powered smart pillow
+- 🥊 Interactive guided stress-relief session
+- 📊 Recovery analytics dashboard
+- 🔄 Real-time integration between Apple frameworks and IoT hardware
+
+---
+
 # 👥 Team
 **Team Name:** IoTry
 
@@ -375,21 +386,7 @@ After exploration, our approach evolved.
 
 ---
 
-# 📊 Expected User Flow
-
-1. Wear Apple Watch.
-2. Heart rate monitored continuously.
-3. User remains inactive.
-4. Elevated heart rate detected.
-5. Stress episode inferred.
-6. Smart pillow inflates.
-7. Guided punching session begins.
-8. Session ends.
-9. Dashboard visualizes recovery metrics.
-
----
-
-# 📈 Dashboard
+# 📈 Recovery Analytics
 
 The dashboard provides:
 
@@ -404,32 +401,52 @@ The dashboard provides:
 
 # 🔮 Future Improvements
 
-- AI-based personalized stress prediction
+### AI & Personalization
+
+- Personalized stress prediction
+- Adaptive stress thresholds
 - Apple Intelligence integration
-- Breathing exercise recommendations
-- Haptic feedback on Apple Watch
+
+### User Experience
+
+- Guided breathing exercises
+- Apple Watch haptic feedback
 - Adaptive pillow firmness
+
+### Ecosystem
+
 - Cloud synchronization
-- Multi-user support
+- Multi-device support
+- Multi-user profiles
 
 ---
 
-# 📚 Technologies
+# 📚 Technology Stack
 
-| Category | Technology |
-|-----------|------------|
-| Language | Swift |
-| UI | SwiftUI |
-| IoT Communication | Core Bluetooth |
-| Health Data | HealthKit |
-| Motion Detection | Core Motion |
-| Wearable | Apple Watch |
-| Hardware | BLE-enabled Smart Pillow |
+## Software
+
+| Technology | Purpose |
+|------------|---------|
+| Swift | Application Development |
+| SwiftUI | User Interface |
+| Core Bluetooth | BLE Communication |
+| HealthKit | Heart Rate Monitoring |
+| Core Motion | Activity Detection |
+
+## Hardware
+
+| Component | Purpose |
+|-----------|---------|
+| Apple Watch | Heart Rate Monitoring |
+| ESP32 | BLE Peripheral |
+| MPU6050 | Motion Detection |
+| Green LED | Provides a visual cue when a stress-relief session is triggered |
+| Pillow | Stress-Relief Device |
 
 ---
 
 # 🌟 Why This Project?
 
-Instead of merely notifying users that they may be stressed, our system bridges digital health monitoring with tangible physical interaction.
+Our goal is to demonstrate how Apple frameworks can extend beyond traditional mobile applications by integrating with IoT devices to create richer and more interactive user experiences.
 
-By combining **Core Bluetooth**, **HealthKit**, and **Core Motion**, we create a seamless experience where Apple devices not only detect stress but also trigger an IoT-enabled intervention designed to promote healthier stress management.
+Rather than simply notifying users about elevated stress levels, our solution combines **HealthKit**, **Core Motion**, and **Core Bluetooth** to detect potential stress episodes, initiate an IoT-assisted intervention, and provide meaningful recovery insights. Through this project, we explore how Apple's ecosystem can seamlessly connect digital health monitoring with real-world interaction.
