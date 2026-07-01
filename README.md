@@ -1,10 +1,10 @@
 # Tech & Framework Challenge
 
-> A project-based challenge focused on exploring Apple's technologies and frameworks by designing and building innovative applications that solve real-world problems.
+> A project-based challenge that encourages teams to explore Apple technologies, experiment with Apple frameworks, and transform their learnings into a functional application.
 
 This repository documents our team's journey throughout the **Tech & Framework Challenge**, where each team selects a technology theme, researches Apple's frameworks, explores different approaches, and develops a solution while documenting the entire engineering process—from initial assumptions to the final design decisions.
 
-For this challenge, our team chose the **Internet of Things (IoT)** theme and built **StressLess**, an application that integrates Apple frameworks with an IoT-enabled smart pillow to provide an interactive stress detection and relief experience.
+For this challenge, our team chose the **Internet of Things (IoT)** theme and built **[App Name]**, an application that integrates Apple frameworks with an IoT-enabled smart pillow to provide an interactive stress detection and relief experience.
 
 ---
 
@@ -12,11 +12,12 @@ For this challenge, our team chose the **Internet of Things (IoT)** theme and bu
 
 Stress often builds up silently during work or study sessions. While wearable devices can continuously monitor physiological signals, they rarely provide immediate physical intervention.
 
-Our project proposes an integrated ecosystem that detects potential stress episodes using Apple frameworks and responds by activating an IoT-enabled smart pillow that encourages healthy stress release. After each session, users can review their stress history and recovery progress through an interactive dashboard.
+Our project explores how Apple frameworks can be combined with Internet of Things (IoT) technologies to bridge this gap. By leveraging **HealthKit**, **Core Motion**, and **Core Bluetooth**, the application detects potential stress episodes based on elevated heart rate during periods of inactivity, communicates with a Bluetooth-enabled smart pillow, and encourages users to engage in a guided stress-relief session. Following each session, users can review their recovery through an interactive analytics dashboard.
 
 ---
 
 # 👥 Team
+**Team Name:** IoTry
 
 | Name | Role |
 |------|------|
@@ -30,17 +31,15 @@ Our project proposes an integrated ecosystem that detects potential stress episo
 
 # 🎯 Challenge Theme
 
-Among several available challenge themes, we chose **IoT** because we wanted to explore how Apple frameworks can interact with physical devices rather than remaining purely software-based.
+Among several available challenge themes, we chose **Internet of Things (IoT)** because we wanted to explore how Apple frameworks can interact with physical devices rather than remaining purely software-based.
 
-### Main Theme
+### Theme
 - Internet of Things (IoT)
 
-### Primary Framework
-- Core Bluetooth
-
-### Supporting Frameworks
-- HealthKit
-- Core Motion
+### Apple Frameworks
+- **Core Bluetooth** *(Primary Framework)*
+- **HealthKit**
+- **Core Motion**
 
 ---
 
@@ -56,62 +55,65 @@ We wanted to answer a different question:
 
 # 🚀 Proposed Solution
 
-Our application automatically detects possible stress episodes by combining:
+Our solution consists of two main stages: **possible stress detection** and **stress relief**.
 
-- elevated heart rate
-- user inactivity
-- Bluetooth-connected IoT device
+### Possible Stress Detection
 
-When stress is detected:
+- HealthKit continuously monitors heart rate using Apple Watch.
+- Core Motion determines whether the user is stationary.
+- Elevated heart rate during inactivity is interpreted as a potential stress episode.
 
-1. Heart rate is continuously monitored through HealthKit.
-2. Core Motion verifies the user is physically inactive.
-3. The application determines a potential stress episode.
-4. Core Bluetooth sends a command to a smart pillow.
-5. The pillow inflates and becomes a safe punching bag.
-6. The user performs guided stress-relief exercises.
-7. Recovery data is visualized inside the dashboard.
+### Stress Relief
+
+- Core Bluetooth communicates with an ESP32-powered smart pillow.
+- The pillow provides a visual cue by activating its LED.
+- Users perform a short guided stress-relief session by interacting with the pillow.
+- Recovery progress and session statistics are presented through an analytics dashboard.
 
 ---
 
-# 🛠 Framework Architecture
+# 🛠 Framework Integration
 
-## Core Bluetooth (Main Framework)
+| Framework | Purpose |
+|-----------|---------|
+| **Core Bluetooth** | Communicates with the ESP32-powered smart pillow using Bluetooth Low Energy (BLE). |
+| **HealthKit** | Continuously monitors the user's heart rate through Apple Watch. |
+| **Core Motion** | Determines whether the user is stationary to reduce false stress detections. |
 
-Purpose:
-- Connect with the IoT smart pillow
-- Send commands
-- Receive device status
+---
 
-Responsibilities:
-- BLE discovery
-- Device pairing
-- Command transmission
-- Device communication
+## Core Bluetooth *(Primary Framework)*
+
+### Why We Chose It
+
+Core Bluetooth enables seamless BLE communication between the iOS application and our custom IoT device. It acts as the bridge between digital health monitoring and physical interaction, making it the foundation of our solution.
+
+### Responsibilities
+
+- Discover nearby BLE devices
+- Pair with the smart pillow
+- Send activation commands
+- Receive sensor data from the ESP32
 
 ---
 
 ## HealthKit
 
-Purpose:
-- Read heart rate data from Apple Watch
+### Responsibilities
 
-Responsibilities:
-- Continuous heart rate monitoring
-- Detect elevated heart rate
-- Record recovery trends
+- Read heart rate data
+- Monitor recovery progress
+- Store health-related metrics
 
 ---
 
 ## Core Motion
 
-Purpose:
-- Determine whether the user is stationary.
+### Responsibilities
 
-Responsibilities:
-- Detect inactivity
-- Reduce false positives
-- Ensure high heart rate is not caused by exercise
+- Detect stationary activity
+- Reduce false positives caused by exercise
+- Provide additional context for stress detection
 
 ---
 
