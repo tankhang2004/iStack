@@ -455,7 +455,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "smashPadWatch-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = smashPadWatch;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "This app needs access to your heart rate to detect sudden heart rate spike.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "This app needs access to detect your motion";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.taufiq.smashPad;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -491,7 +493,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "smashPadWatch-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = smashPadWatch;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "This app needs access to your heart rate to detect sudden heart rate spike.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "This app needs access to detect your motion";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.taufiq.smashPad;
 				LD_RUNPATH_SEARCH_PATHS = (

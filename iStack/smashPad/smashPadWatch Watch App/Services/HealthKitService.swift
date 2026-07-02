@@ -9,17 +9,21 @@ import Foundation
 import HealthKit
 import Combine
 import WatchKit
+import CoreMotion
 
 class HealthKitService: NSObject, ObservableObject, WKExtendedRuntimeSessionDelegate {
     private let healthStore = HKHealthStore()
     private var runtimeSession: WKExtendedRuntimeSession?
+    private let motionActivityManager = CMMotionActivityManager()
     
     @Published var isAuthorized = false
     @Published var currentHeartRate: Double = 0.0
     @Published var isSessionActive = false
-    
-    // Variabel penyimpan data fisiologis asli user
     @Published var restingHeartRate: Double = 75.0 // Default fallback value
+    
+    @Published var isStationary: Bool = true
+        private var stressStrikeCount = 0
+        private let requiredStressStrikes = 3
     
     func requestAuthorization() {
         guard let hrType = HKQuantityType.quantityType(forIdentifier: .heartRate),
@@ -66,6 +70,7 @@ class HealthKitService: NSObject, ObservableObject, WKExtendedRuntimeSessionDele
         func toggleSession() {
             if isSessionActive {
                 runtimeSession?.invalidate()
+                motionActivityManager.stopActivityUpdates()
                 isSessionActive = false
             } else {
                 runtimeSession = WKExtendedRuntimeSession()
@@ -73,7 +78,23 @@ class HealthKitService: NSObject, ObservableObject, WKExtendedRuntimeSessionDele
                 runtimeSession?.delegate = self
                 runtimeSession?.start()
                 startHeartRateQuery()
+                startMotionTracking()
                 isSessionActive = true
+            }
+        }
+    
+    // MARK: - Sensor CoreMotion
+        private func startMotionTracking() {
+            if CMMotionActivityManager.isActivityAvailable() {
+                motionActivityManager.startActivityUpdates(to: .main) { [weak self] activity in
+                    guard let activity = activity else { return }
+                    
+                    // Considered Stationary if not walking, running, cycling
+                    let isMoving = activity.walking || activity.running || activity.cycling
+                    self?.isStationary = !isMoving
+                    
+                    print(isMoving ? "Moving" : "Stationary")
+                }
             }
         }
     
@@ -91,7 +112,7 @@ class HealthKitService: NSObject, ObservableObject, WKExtendedRuntimeSessionDele
         healthStore.execute(query)
     }
     
-    // MARK: - Stress Logic
+    // MARK: - Stress Logic + DEBOUNCE + COREMOTION
     private func process(_ samples: [HKSample]?) {
         guard let sample = samples?.last as? HKQuantitySample else { return }
         let bpm = sample.quantity.doubleValue(for: HKUnit(from: "count/min"))
@@ -105,11 +126,29 @@ class HealthKitService: NSObject, ObservableObject, WKExtendedRuntimeSessionDele
             let relaxedThreshold = self.restingHeartRate * 1.10
             
             if bpm >= stressThreshold {
+                if self.isStationary {
+                    self.stressStrikeCount += 1
+                    print("⚠️ Stress warning: \(self.stressStrikeCount)/\(self.requiredStressStrikes)")
+                    
+                    if self.stressStrikeCount >= self.requiredStressStrikes {
+                        ConnectivityManager.shared.sendStressAlert()
+                        print("🔥 Validated Stress! (Stationary & Stable high BPM)")
+                        // Reset strike so it doesn't keep calling the function
+                        self.stressStrikeCount = 0
+                    } else {
+                        // If BPM is high but moving, ignore and reset the stress count
+                        print("BPM is high but moving, ignore.")
+                        self.stressStrikeCount = 0
+                    }
+                }
                 ConnectivityManager.shared.sendStressAlert()
                 print("🔥 STRESS DETECTED! (BPM: \(bpm) passed threshold \(stressThreshold))")
             } else if bpm <= relaxedThreshold {
+                self.stressStrikeCount = 0
                 ConnectivityManager.shared.sendRelaxedAlert()
                 print("🍏 RELAXED. (BPM: \(bpm) is safe below \(relaxedThreshold))")
+            } else {
+                self.stressStrikeCount = 0 //grey area, reset strike
             }
         }
     }
