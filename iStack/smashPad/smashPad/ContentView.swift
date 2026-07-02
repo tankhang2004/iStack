@@ -37,7 +37,7 @@ struct ContentView: View {
                     .foregroundColor(.secondary)
             }
         }
-        .onChange(of: connectivity.currentStatus) { newStatus in
+        .onChange(of: connectivity.currentStatus) { oldStatus, newStatus in
             if newStatus == "stressed" {
                 bluetooth.turnOnPillowLED()
             } else {
