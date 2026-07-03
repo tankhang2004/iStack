@@ -135,7 +135,7 @@ Core Motion provides activity information that helps distinguish periods of inac
 ## 🔄 System Workflow
 
 ```text
-                                     User starts monitoring session
+                  User starts monitoring session
                                 │
                                 ▼
                     Create a new Session record
