@@ -4,7 +4,7 @@
 
 This repository documents our team's journey throughout the **Tech & Framework Challenge**, where each team selects a technology theme, researches Apple's frameworks, explores different approaches, and develops a solution while documenting the entire engineering process—from initial assumptions to the final design decisions.
 
-For this challenge, our team chose the **Internet of Things (IoT)** theme and built **[App Name]**, an application that integrates Apple frameworks with an IoT-enabled smart pillow to detect potential tension episodes based on elevated heart rate during periods of inactivity, encourage users to perform a guided tension-relief session, and provide recovery analytics through an dashboard.
+For this challenge, our team chose the **Internet of Things (IoT)** theme and built **Thump**, an application that integrates Apple frameworks with an IoT-enabled smart pillow to detect potential tension episodes based on elevated heart rate during periods of inactivity, encourage users to perform a guided tension-relief session, and provide recovery analytics through an dashboard.
 
 ---
 
