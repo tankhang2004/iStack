@@ -30,7 +30,7 @@ const float PUNCH_THRESHOLD = 15.0;
 // DEBOUNCE VARIABLES
 // ==========================================
 unsigned long lastPunchTime = 0;         // Record last punch time
-const unsigned long debounceDelay = 160; // Safe pause between punch (ms)
+const unsigned long debounceDelay = 300; // Safe pause between punch (ms)
 
 unsigned long lightOnTime = 0;           // Record when the light was turned on
 const unsigned long timeoutDuration = 10000; // 10 seconds timeout (ms)
@@ -177,6 +177,10 @@ void loop() {
             Serial.print("💥 PILLOW SMASHED! power: ");
             Serial.print(accel_magnitude);
             Serial.println(" m/s^2");
+
+            // turn off the light
+            isTensed = false;
+            digitalWrite(LED_PIN, LOW); // Turn off lights automatically
 
             // create punch intensity data "PUNCH:32.25"
             String txMessage = "PUNCH:" + String(accel_magnitude, 2);

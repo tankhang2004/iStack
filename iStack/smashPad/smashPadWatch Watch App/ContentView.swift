@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var hkService = HealthKitService()
+    @ObservedObject private var hkService = HealthKitService.shared
     
     var body: some View {
         ScrollView {
@@ -54,15 +54,6 @@ struct ContentView: View {
                             .foregroundColor(.orange)
                     }
                     .padding(.bottom, 8)
-                    
-                    // Session button for extended runtime
-                    Button(action: {
-                        hkService.toggleSession()
-                    }) {
-                        Text(hkService.isSessionActive ? "End Session" : "Start Focused Session")
-                            .font(.headline)
-                    }
-                    .tint(hkService.isSessionActive ? .red : .blue)
                     
                     // --- FAKE SIMULATION BUTTON ---
                     Divider()

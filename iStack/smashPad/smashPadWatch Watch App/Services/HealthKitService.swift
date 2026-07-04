@@ -12,9 +12,12 @@ import WatchKit
 import CoreMotion
 
 class HealthKitService: NSObject, ObservableObject, WKExtendedRuntimeSessionDelegate {
+    static let shared = HealthKitService()
+    
     private let healthStore = HKHealthStore()
     private var runtimeSession: WKExtendedRuntimeSession?
     private let motionActivityManager = CMMotionActivityManager()
+    private var activeHeartRateQuery: HKQuery?
     
     @Published var isAuthorized = false
     @Published var currentHeartRate: Double = 0.0
@@ -24,6 +27,11 @@ class HealthKitService: NSObject, ObservableObject, WKExtendedRuntimeSessionDele
     @Published var isStationary: Bool = true
         private var stressStrikeCount = 0
         private let requiredStressStrikes = 3
+    
+    private override init() {
+        super.init()
+        _ = ConnectivityManager.shared
+    }
     
     func requestAuthorization() {
         guard let hrType = HKQuantityType.quantityType(forIdentifier: .heartRate),
@@ -66,22 +74,42 @@ class HealthKitService: NSObject, ObservableObject, WKExtendedRuntimeSessionDele
         healthStore.execute(query)
     }
     
-    // MARK: - Session Control
-        func toggleSession() {
-            if isSessionActive {
-                runtimeSession?.invalidate()
-                motionActivityManager.stopActivityUpdates()
-                isSessionActive = false
-            } else {
-                runtimeSession = WKExtendedRuntimeSession()
-                
-                runtimeSession?.delegate = self
-                runtimeSession?.start()
-                startHeartRateQuery()
-                startMotionTracking()
-                isSessionActive = true
+    // MARK: - Session Control (🌟 2. FIXED: Separated into Start and Stop for iPhone Control)
+        func startSession() {
+            guard !isSessionActive else { return }
+            
+            runtimeSession = WKExtendedRuntimeSession()
+            runtimeSession?.delegate = self
+            runtimeSession?.start()
+            
+            startHeartRateQuery()
+            startMotionTracking()
+            
+            DispatchQueue.main.async {
+                self.isSessionActive = true
+                ConnectivityManager.shared.sendSessionSync(isActive: true)
             }
+            print("⌚️ Watch Session STARTED by iPhone")
         }
+        
+        func stopSession() {
+            guard isSessionActive else { return }
+            
+            runtimeSession?.invalidate()
+            motionActivityManager.stopActivityUpdates()
+            
+            if let query = activeHeartRateQuery {
+                healthStore.stop(query)
+                activeHeartRateQuery = nil
+            }
+            
+            DispatchQueue.main.async {
+                self.currentHeartRate = 0.0 // Reset number on watch screen to 0
+                self.isSessionActive = false
+                ConnectivityManager.shared.sendSessionSync(isActive: false)
+            }
+            print("⌚️ Watch Session STOPPED by iPhone. All sensors are OFF.")
+}
     
     // MARK: - Sensor CoreMotion
         private func startMotionTracking() {
@@ -109,6 +137,7 @@ class HealthKitService: NSObject, ObservableObject, WKExtendedRuntimeSessionDele
         query.updateHandler = { [weak self] _, samples, _, _, _ in
             self?.process(samples)
         }
+        self.activeHeartRateQuery = query
         healthStore.execute(query)
     }
     
