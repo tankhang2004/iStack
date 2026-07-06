@@ -18,18 +18,12 @@ struct ActivityView: View {
     @State private var showAddCategory = false
 
     var body: some View {
-
         NavigationStack {
-
             ZStack {
 
                 Color(.systemBackground)
                     .ignoresSafeArea()
-
                 VStack(alignment: .leading, spacing: 24) {
-
-                    // MARK: Header
-
                     HStack {
 
                         Text("Activity")
@@ -38,22 +32,19 @@ struct ActivityView: View {
 
                         Spacer()
 
-                        ConnectivityButton {
-
-                        }
+                        ConnectivityButton { }
                     }
-                    .padding(.bottom, -8)
+                    .padding(.top, -20)
 
                     Text("""
                     Pick an activity to track, or add your own.
                     This tracker is best for things where you'll
                     be sitting still, like studying or coding.
-                    Please also keep your smart pillow within reach.
+                    Please also keep your smart pillow within 
+                    reach.
                     """)
-                    .font(.system(size: 17))
-                    .foregroundStyle(.secondary)
-
-                    // MARK: Categories
+                    .font(.system(size: 20))
+                    .foregroundStyle(.primary)
 
                     ScrollView(showsIndicators: false) {
 
@@ -62,18 +53,14 @@ struct ActivityView: View {
                             ForEach(categories) { category in
 
                                 ActivityCard(title: category.name) {
-
-                                    // TODO:
-                                    // Create Session
-                                    // Start Apple Watch
-                                    // Navigate to Dashboard
-
-                                    print("Start \(category.name)")
+                                    print(category.name)
                                 }
                             }
 
                             ActivityButton {
-                                showAddCategory = true
+                                withAnimation(.spring(response: 0.35)) {
+                                    showAddCategory = true
+                                }
                             }
                         }
                         .padding(.top, 10)
@@ -82,18 +69,27 @@ struct ActivityView: View {
                     Spacer()
                 }
                 .padding()
+
+                if showAddCategory {
+
+                    Color.black.opacity(0.45)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.35)) {
+                                showAddCategory = false
+                            }
+                        }
+
+                    AddCategory(isPresented: $showAddCategory)
+                        .transition(.scale(scale: 0.9).combined(with: .opacity))
+                }
             }
             .task {
                 createDefaultCategories()
             }
-            .sheet(isPresented: $showAddCategory) {
-                AddCategory()
-            }
         }
     }
 }
-
-// MARK: - Seed Data
 
 private extension ActivityView {
 

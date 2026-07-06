@@ -19,7 +19,7 @@ struct ConnectivityButton: View {
             Image(systemName: "point.3.connected.trianglepath.dotted")
                 .font(.system(size: 24, weight: .heavy))
                 .foregroundStyle(colorScheme == .dark ? .white : .black)
-                .frame(width: 56, height: 56)
+                .frame(width: 48, height: 48)
                 .glassEffect(in: Circle())
                 .overlay {
                     Circle()
