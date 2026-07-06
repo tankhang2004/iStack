@@ -159,82 +159,83 @@ The app strictly needs `NSBluetoothAlwaysUsageDescription`, Health (Heart Rate &
                       • Overall session statistics
 
 ### 📡 Detailed Interaction Flow
-sequenceDiagram
-    autonumber
+```mermaid
+    sequenceDiagram
+        autonumber
 
-    actor User
-    participant Watch as Apple Watch (watchOS)
-    participant HK as HealthKit
-    participant App as iPhone App (SwiftUI)
-    participant IoT as Smart Pillow (ESP32)
+        actor User
+        participant Watch as Apple Watch (watchOS)
+        participant HK as HealthKit
+        participant App as iPhone App (SwiftUI)
+        participant IoT as Smart Pillow (ESP32)
 
-    Note over User,IoT: Phase 1 — Monitoring
+        Note over User,IoT: Phase 1 — Monitoring
 
-    User->>Watch: Start Monitoring Session
-    Watch->>Watch: Start Extended Runtime Session
-    Watch->>HK: Observe heart rate continuously
-    Watch->>Watch: Monitor user activity with Core Motion
-    App->>App: Create Session
+        User->>Watch: Start Monitoring Session
+        Watch->>Watch: Start Extended Runtime Session
+        Watch->>HK: Observe heart rate continuously
+        Watch->>Watch: Monitor user activity with Core Motion
+        App->>App: Create Session
 
-    loop During Monitoring
-        HK-->>Watch: New heart rate sample
-        Watch->>App: Save HeartRate sample
+        loop During Monitoring
+            HK-->>Watch: New heart rate sample
+            Watch->>App: Save HeartRate sample
 
-        Watch->>Watch: Validate HR > baseline + threshold<br/>AND user is stationary for 30–60 seconds
+            Watch->>Watch: Validate HR > baseline + threshold<br/>AND user is stationary for 30–60 seconds
 
-        alt Possible Tension Episode Detected
+            alt Possible Tension Episode Detected
 
-            Note over User,IoT: Phase 2 — Validation
+                Note over User,IoT: Phase 2 — Validation
 
-            Watch->>App: Potential Tension Detected
-            App->>IoT: BLE command → Turn ON Green LED
-            IoT-->>User: Smart pillow becomes active
-            App-->>User: "Feeling tense?\nTry a tension relief session."
+                Watch->>App: Potential Tension Detected
+                App->>IoT: BLE command → Turn ON Green LED
+                IoT-->>User: Smart pillow becomes active
+                App-->>User: "Feeling tense?\nTry a tension relief session."
 
-            App->>App: Wait up to 1 minute for first punch
+                App->>App: Wait up to 1 minute for first punch
 
-            alt First punch detected within 1 minute
+                alt First punch detected within 1 minute
 
-                User->>IoT: First punch
-                IoT->>IoT: Detect impact (Shock Sensor + MPU6050)
-                IoT-->>App: Send first PunchData
+                    User->>IoT: First punch
+                    IoT->>IoT: Detect impact (Shock Sensor + MPU6050)
+                    IoT-->>App: Send first PunchData
 
-                App->>App: Create TensionEvent
-                App->>App: Save first PunchData
-                App->>App: Set recoveryStartedAt
-                App->>App: Start recovery timer
+                    App->>App: Create TensionEvent
+                    App->>App: Save first PunchData
+                    App->>App: Set recoveryStartedAt
+                    App->>App: Start recovery timer
 
-                loop Subsequent punches
-                    User->>IoT: Punch / slap pillow
-                    IoT->>IoT: Detect impact
-                    IoT-->>App: Send PunchData
-                    App->>App: Save PunchData
+                    loop Subsequent punches
+                        User->>IoT: Punch / slap pillow
+                        IoT->>IoT: Detect impact
+                        IoT-->>App: Send PunchData
+                        App->>App: Save PunchData
+                    end
+
+                    Note over User,IoT: Phase 3 — Recovery
+
+                    HK-->>Watch: Heart rate returns near baseline
+                    Watch->>App: Recovered
+                    App->>App: Stop recovery timer
+                    App->>App: Update TensionEvent<br/>recoveredAt & recoveryDuration
+                    App->>IoT: BLE command → Turn OFF Green LED
+                    IoT-->>User: Pillow deactivates
+
+                else No punch within 1 minute
+
+                    App->>App: False Positive
+                    App->>IoT: BLE command → Turn OFF Green LED
+                    IoT-->>User: Pillow deactivates
+
+                    Note over App: No TensionEvent created<br/>Not counted in tension history
+
                 end
-
-                Note over User,IoT: Phase 3 — Recovery
-
-                HK-->>Watch: Heart rate returns near baseline
-                Watch->>App: Recovered
-                App->>App: Stop recovery timer
-                App->>App: Update TensionEvent<br/>recoveredAt & recoveryDuration
-                App->>IoT: BLE command → Turn OFF Green LED
-                IoT-->>User: Pillow deactivates
-
-            else No punch within 1 minute
-
-                App->>App: False Positive
-                App->>IoT: BLE command → Turn OFF Green LED
-                IoT-->>User: Pillow deactivates
-
-                Note over App: No TensionEvent created<br/>Not counted in tension history
-
             end
         end
-    end
 
-    Note over User,IoT: Phase 4 — Session End
+        Note over User,IoT: Phase 4 — Session End
 
-    User->>Watch: End Monitoring Session
-    Watch->>Watch: End Extended Runtime Session
-    App->>App: Update Session endTime
-    App-->>User: Display dashboard<br/>• Validated tension events<br/>• Recovery times<br/>• Heart rate timeline<br/>• Punch statistics
+        User->>Watch: End Monitoring Session
+        Watch->>Watch: End Extended Runtime Session
+        App->>App: Update Session endTime
+        App-->>User: Display dashboard<br/>• Validated tension events<br/>• Recovery times<br/>• Heart rate timeline<br/>• Punch statistics
