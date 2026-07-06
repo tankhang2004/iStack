@@ -1,138 +1,82 @@
-# Tech & Framework Challenge
+# Tech & Framework Challenge: Thump (Team IoTry)
 
-> A project-based challenge that encourages teams to explore Apple technologies, experiment with Apple frameworks, and transform their learnings into a functional application.
+## 👥 Present Your Team
+* **Ahmad Taufiq Hidayat** - Coder
+* **Johnny Khang** - Coder
+* **Stevanus Felixiano** - Coder
+* **Valentica Ongke** - Designer
+* **Ni Ketut Lela Berliani** - Designer
 
-This repository documents our team's journey throughout the **Tech & Framework Challenge**, where each team selects a technology theme, researches Apple's frameworks, explores different approaches, and develops a solution while documenting the entire engineering process—from initial assumptions to the final design decisions.
+## 🧠 Starting Assumption
 
-For this challenge, our team chose the **Internet of Things (IoT)** theme and built **Thump**, an application that integrates Apple frameworks with an IoT-enabled smart pillow to detect potential tension episodes based on elevated heart rate during periods of inactivity, encourage users to perform a guided tension-relief session, and provide recovery analytics through an dashboard.
+**We think we'll end up using:**
+HealthKit (for detecting stress via Heart Rate) and Core Bluetooth (to connect to a custom IoT ESP32 smart pillow). 
 
----
+**Because:**
+It sounded like the most obvious fit. We assumed that elevated heart rate naturally means the user is stressed. We also thought the biggest hurdle would be building the physical ESP32 hardware, while the Apple Watch could easily and seamlessly stream continuous heart rate data to the iPhone in the background. Lastly, we assumed calling the event "Stress" in our UI was the most accurate term.
 
-# 📖 Overview
+## 🔍 The Exploration Log
 
-Periods of tension can build up gradually during work or study sessions. While wearable devices can continuously monitor physiological signals, they rarely provide an immediate, interactive response.
+**What we browsed, and what surprised us:**
+* We explored Apple's IoT integration options (Matter, HomeKit, and Core Bluetooth). We were surprised to find that HomeKit/Matter are too strict for custom, non-certified prototypes. 
+* We were also surprised by Apple's strict privacy and battery policies: `WCSession` messages from iPhone to Apple Watch are blocked if the Watch screen is off. 
 
-Our project explores how Apple frameworks can be combined with Internet of Things (IoT) technologies to bridge this gap. By leveraging **HealthKit**, **Core Motion**, and **Core Bluetooth**, the application monitors heart rate and user activity to identify potential tension episodes based on elevated heart rate during periods of inactivity. When a potential tension episode is detected, the application communicates with a Bluetooth-enabled smart pillow, prompting users to engage in a guided tension-relief session. Following each validated tension event, users can review their recovery through an interactive analytics dashboard, including heart rate trends, recovery time, and punch statistics.
+**What we actually built or tested in code (not just read about):**
+* We built an ESP32 firmware integrating an MPU6050 shock sensor and LED, communicating via BLE.
+* We developed an iOS app with `CBCentralManager` to automatically handshake and trigger the pillow's LED.
+* We built a watchOS app using `WKExtendedRuntimeSession` to continuously query heart rate (`HKAnchoredObjectQuery`) and track user movement using Core Motion (`CMMotionActivityManager`).
 
----
+**What we discovered that we didn't expect:**
+* Heart rate alone is a terrible indicator of tension. Walking up the stairs mimics a "stress" spike, causing massive false positives.
+* "Stress" is a medical/psychological diagnosis. Our app only reads physiological data. Calling it "stress" created a negative user experience.
 
-# ✨ Key Features
+## ❌ What We Tried and Dropped
 
-- ❤️ Continuous heart rate monitoring using Apple Watch
-- 🧍 Stationary activity detection with Core Motion
-- 🎯 Detection of potential tension episodes based on elevated heart rate during inactivity
-- 📡 BLE communication with an ESP32-powered smart pillow
-- 🥊 Interactive guided tension-relief sessions
-- 📊 Recovery analytics dashboard with heart rate trends, recovery time, and punch statistics
-- 🔄 Real-time integration between Apple frameworks and IoT hardware
----
+**We considered:**
+Relying exclusively on Heart Rate to detect stress, and integrating via HomeKit for a more "native" Apple ecosystem feel.
 
-# 👥 Team
-**Team Name:** IoTry
+**We dropped it because:**
+* **Heart Rate Only:** Dropped because it generated too many false positives during physical activity. We added Core Motion to ensure the user is strictly *stationary* when the heart rate spikes.
+* **HomeKit:** Dropped because it requires certified hardware. Core Bluetooth gave us the raw byte-level control we needed for our custom ESP32 payload.
+* **"Stress" Terminology:** Dropped after feedback. We pivoted to the term "potential tension episode" to avoid implying a medical diagnosis.
 
-| Name | Role |
-|------|------|
-| Ahmad Taufiq Hidayat | Coder |
-| Johnny Khang | Coder |
-| Stevanus Felixiano | Coder |
-| Valentica Ongke | Designer |
-| Ni Ketut Lela Berliani | Designer |
+## ⚠️ Real Limitations Hit
 
----
+**What broke, what didn't behave the way the documentation said it would, where AI genuinely couldn't help you:**
+We hit a major wall with watchOS background execution and `WCSession`. When the iPhone sent a "Start Session" command to the Watch, it would silently fail and return *“Apple Watch is not reachable”* if the Watch screen was asleep. Furthermore, Apple Watch stops reading HealthKit data frequently to save battery unless explicitly forced into a specific session state.
 
-# 🎯 Challenge Theme
+**How we worked around it (or how it changed our use case / mechanic):**
+We had to architect a robust `WKExtendedRuntimeSession` delegate in the watchOS app to keep the sensors alive. We also implemented a "Lazy Initialization" fix (`_ = ConnectivityManager.shared` on init) to force the Watch to wake up its communication channel the moment the app opens, preventing the iPhone from thinking the Watch was disconnected.
 
-Among several available challenge themes, we chose **Internet of Things (IoT)** because we wanted to explore how Apple frameworks can interact with physical devices rather than remaining purely software-based.
+## 🔄 The Revised Decision
 
-### Theme
-- Internet of Things (IoT)
+**Final decision:**
+Core Bluetooth (Primary) + HealthKit + Core Motion. 
 
-### Apple Frameworks
-- **Core Bluetooth** *(Primary Framework)*
-- **HealthKit**
-- **Core Motion**
+**What changed since Section 1, and why:**
+Our core stack remained the same, but the *logic* changed drastically. Instead of just reading HR, we now use Core Motion to verify inactivity. Instead of a background autonomous monitor, it became an interactive session: Watch detects potential tension -> iPhone triggers ESP32 via BLE -> LED turns on -> User punches the pillow -> MPU6050 detects impact magnitude -> iOS logs the recovery analytics. We successfully bridged a digital Apple framework state into a physical IoT tension-relief action.
 
----
+## 📱 App Track Addendum
 
-# 💡 Problem Statement
+### About the Frameworks
+**Does your use case genuinely need both frameworks working together, or could it work with just your main one?**
+Yes, it genuinely needs all three. Without HealthKit, we can't detect the physiological trigger. Without Core Motion, we get false positives from walking. Without Core Bluetooth, we just have a passive dashboard with no physical tension-relief mechanism (the smart pillow).
 
-Many wearable applications can detect changes in physiological signals, but few provide an immediate, interactive response.
+### About Accessibility and Localization
+**What did you decide to support, what did you decide not to, and why?**
+We did not localize the app yet, keeping it strictly in English. For this specific challenge timeline, our engineering priority was ensuring the complex End-to-End hardware communication (Watch -> iPhone -> ESP32) worked seamlessly without latency. We supported basic accessibility via Dynamic Type for the analytics dashboard to ensure the heart rate metrics remain readable.
 
-We wanted to answer a different question:
-
-> **What if physiological changes could trigger an IoT-enabled device that encourages users to engage in a guided tension-relief session and track their recovery?**
----
-
-# 🚀 Proposed Solution
-Our solution consists of two main stages: **potential tension detection** and **guided tension relief**.
-
-### Potential Tension Detection
-
-- HealthKit continuously monitors heart rate using Apple Watch.
-- Core Motion determines whether the user is stationary.
-- Elevated heart rate during periods of inactivity is identified as a **potential tension episode**.
-- The application prompts the user to interact with the IoT-enabled smart pillow.
-- If the user responds by punching the pillow within one minute, the event is validated as a tension event. Otherwise, it is treated as a false positive and is not recorded.
-
-### Guided Tension Relief
-
-- Core Bluetooth communicates with an ESP32-powered smart pillow.
-- The pillow provides a visual cue by activating its LED.
-- Users perform a guided tension-relief session by interacting with the pillow.
-- The first punch starts recovery monitoring, while subsequent punches are recorded throughout the session.
-- Apple Watch continues monitoring heart rate until it returns near the user's baseline.
-- Recovery metrics and session analytics are presented through an interactive dashboard.
----
-
-# 🛠 Framework Integration
-
-| Framework | Purpose |
-|-----------|---------|
-| **Core Bluetooth** | Communicates with the ESP32-powered smart pillow using Bluetooth Low Energy (BLE). |
-| **HealthKit** | Continuously monitors the user's heart rate using Apple Watch. |
-| **Core Motion** | Verifies that the user is stationary to improve the accuracy of potential tension episode detection. |
----
-
-## Core Bluetooth *(Primary Framework)*
-
-### Why We Chose It
-
-Core Bluetooth enables seamless BLE communication between the iOS application and our custom IoT device. It acts as the bridge between digital health monitoring and physical interaction, making it the foundation of our solution.
-
-### Responsibilities
-
-- Discover nearby BLE devices
-- Pair with the smart pillow
-- Send activation commands
-- Receive sensor data from the ESP32
+### About Privacy
+**What data does your app actually need? What happens in your app when the user says no to a permission?**
+The app strictly needs `NSBluetoothAlwaysUsageDescription`, Health (Heart Rate & Resting Heart Rate), and Motion access. If the user denies HealthKit, the app gracefully degrades: the Watch UI explicitly shows a "Need Sensor Access" state, and we provide a "Simulation Mode" (via manual UI buttons) to manually trigger a tension spike so the user can still experience punching the IoT pillow without biometric data.
 
 ---
 
-## HealthKit
+## 📎 Appendix: System Architecture & Data Flow
 
-### Why We Chose It
+*Although this challenge focuses on the engineering journey, we have included our system architecture diagrams below for broader context on how the end-to-end IoT communication was implemented.*
 
-HealthKit provides access to heart rate data collected by Apple Watch, enabling our application to monitor physiological changes throughout each monitoring session.
-
-### Responsibilities
-Read continuous heart rate data from Apple Watch
-
----
-
-## Core Motion
-
-### Why We Chose It
-
-Core Motion provides activity information that helps distinguish periods of inactivity from physical movement. Combining motion data with heart rate improves the reliability of potential tension episode detection and reduces false positives.
-
-### Responsibilities
-
-- Detect whether the user is stationary
-- Reduce false positives caused by physical activity
-
----
-
-## 🔄 System Workflow
+### 🔄 System Workflow
 
 ```text
                   User starts monitoring session
@@ -207,18 +151,14 @@ Core Motion provides activity information that helps distinguish periods of inac
                          Update Session endTime
                                             │
                                             ▼
-                     Dashboard displays analytics
-                     • Number of validated tension events
-                     • Recovery time for each event
-                     • Heart rate timeline
-                     • Punch count & intensity
-                     • Overall session statistics
-```
----
+                      Dashboard displays analytics
+                      • Number of validated tension events
+                      • Recovery time for each event
+                      • Heart rate timeline
+                      • Punch count & intensity
+                      • Overall session statistics
 
-## 📡 Detailed Interaction Flow
-
-```mermaid
+### 📡 Detailed Interaction Flow
 sequenceDiagram
     autonumber
 
@@ -298,250 +238,3 @@ sequenceDiagram
     Watch->>Watch: End Extended Runtime Session
     App->>App: Update Session endTime
     App-->>User: Display dashboard<br/>• Validated tension events<br/>• Recovery times<br/>• Heart rate timeline<br/>• Punch statistics
-```
----
-
-# 🧠 Starting Assumption
-
-Before conducting any research, we assumed:
-
-- Heart rate alone would be sufficient to detect tension.
-- Bluetooth communication with an IoT device would be relatively straightforward.
-- Apple Watch could continuously monitor heart rate without significant limitations.
-- The biggest challenge would be building the physical smart pillow.
-- Referring to detected events as **"stress"** would be appropriate for the application.
-
----
-
-# 🔍 Exploration Log
-
-Our research process focused on validating our initial assumptions and understanding how Apple's frameworks could support our proposed solution.
-
-### Step 1
-
-Explored Apple frameworks for IoT communication.
-
-**Considered:**
-
-- Core Bluetooth ✅
-- Matter Support
-- HomeKit
-
-**Finding:**
-
-Core Bluetooth provided the flexibility required to communicate directly with our custom ESP32-powered smart pillow using Bluetooth Low Energy (BLE), confirming that it was the most suitable framework for our use case.
-
----
-
-### Step 2
-
-Investigated methods for detecting potential tension episodes.
-
-**Research included:**
-
-- Heart rate monitoring
-- HealthKit capabilities
-- Core Motion capabilities
-
-**Finding:**
-
-Heart rate alone was not sufficient, as elevated heart rate can occur during physical activity or other non-tension situations. By combining heart rate data with user inactivity from Core Motion, we significantly reduced false positives.
-
----
-
-### Step 3
-
-Studied Apple Watch capabilities and monitoring constraints.
-
-**Finding:**
-
-Apple Watch can continuously monitor heart rate, but only under specific conditions, such as using an Extended Runtime Session. We also found that the watch measures physiological signals—not emotional or mental states—so our application infers potential tension episodes rather than directly measuring them.
-
----
-
-### Step 4
-
-Designed the IoT interaction and user experience.
-
-**Finding:**
-
-While building the smart pillow presented hardware challenges, we also realized that the application's wording was equally important. Based on feedback, we replaced the term **"stress"** with **"potential tension episode"** to avoid implying a medical interpretation and to provide a more neutral user experience. This ultimately led to a guided tension-relief workflow using the smart pillow and recovery analytics.
-
----
-
-# ❌ What We Tried and Dropped
-
-## Matter Support
-
-**Reason explored:**
-
-- Easier smart-home integration.
-
-**Why dropped:**
-
-- Requires Matter-compatible hardware.
-- Less suitable for a fully custom IoT prototype.
-
----
-
-## HomeKit
-
-**Reason explored:**
-
-- Native Apple smart-home ecosystem.
-
-**Why dropped:**
-
-- Primarily designed for certified smart-home accessories.
-- Less flexible than Core Bluetooth.
-
----
-
-## Heart Rate Only Detection
-
-**Reason explored:**
-
-- Simpler implementation.
-
-**Why dropped:**
-
-- Unable to distinguish elevated heart rate caused by physical activity from potential tension episodes.
-- Produced too many false positives.
-- Replaced with a combination of heart rate and user activity from Core Motion.
-
----
-
-## "Stress" Terminology
-
-**Reason explored:**
-
-- Clearly communicates the application's purpose.
-
-**Why dropped:**
-
-- May imply that the application can directly detect or diagnose stress, which is beyond the capabilities of the system.
-- Based on feedback, repeatedly labeling users as "stressed" could create an unnecessarily negative user experience.
-- Replaced with the more neutral term **"potential tension episode"**, which better reflects what the application actually detects.
-
----
-
-# ⚠️ Real Limitations
-
-During development, we identified several practical limitations.
-
-## HealthKit
-
-- Cannot directly determine emotional or mental states.
-- Only provides physiological data, such as heart rate.
-- Accuracy depends on Apple Watch sensor measurements.
-
----
-
-## Core Motion
-
-- Cannot determine whether elevated heart rate is caused by tension.
-- Only provides user activity and motion information.
-- Motion data must be combined with heart rate to reduce false positives.
-
----
-
-## Core Bluetooth
-
-- Limited Bluetooth Low Energy (BLE) communication range.
-- Requires a stable paired connection with the ESP32-powered smart pillow.
-- Communication may be interrupted if the connection is lost.
-
----
-
-## IoT Device
-
-- Requires a custom-built hardware prototype.
-- Punch detection accuracy depends on sensor calibration.
-- Battery life and portability remain areas for future improvement.
-
----
-
-# 🔄 Revised Decision
-
-After our exploration and feedback, our approach evolved.
-
-| Initial Idea | Final Decision |
-|--------------|----------------|
-| Detect stress from heart rate only | Identify potential tension episodes by combining heart rate and user inactivity |
-| Continuously monitor stress | Monitor heart rate and infer potential tension episodes |
-| Simple notification | Encourage a guided tension-relief session through physical interaction |
-| Simple Dashboard | Provide recovery analytics, heart rate trends, and punch statistics |
-| Use the term **"stress"** | Use the more neutral term **"potential tension episode"** |
-
----
-
-# 📈 Recovery Analytics
-
-The dashboard provides:
-
-- Tension event history
-- Heart rate timeline
-- Recovery time for each tension event
-- Total punch count
-- Punch intensity
-- Overall Session summaries
-
----
-
-# 🔮 Future Improvements
-
-### AI & Personalization
-
-- Personalized detection of potential tension episodes
-- Adaptive heart rate thresholds based on individual baselines
-- Apple Intelligence integration for personalized insights
-
-### User Experience
-
-- Customizable LED colors and animation patterns
-- Apple Watch haptic feedback during tension-relief sessions
-- Adaptive smart pillow response based on punch intensity
-
-### Ecosystem
-
-- Cloud synchronization
-- Integration with wellness and productivity applications
-- Widget support
-
-### Hardware
-
-- Improved punch detection accuracy
-- Wireless charging for the smart pillow
-- Longer battery life and a more portable design
-
----
-
-# 📚 Technology Stack
-
-## Software
-
-| Technology | Purpose |
-|------------|---------|
-| Swift | Application Development |
-| SwiftUI | User Interface |
-| Core Bluetooth | BLE Communication |
-| HealthKit | Heart Rate Monitoring |
-| Core Motion | Activity Detection |
-
-## Hardware
-
-| Component | Purpose |
-|-----------|---------|
-| Apple Watch | Continuous heart rate monitoring |
-| ESP32 | BLE communication and hardware control |
-| MPU6050 | Measure punch movement and intensity |
-| Green LED | Indicate an active tension-relief session |
-| Smart Pillow | Physical interface for guided tension relief |
-
----
-
-# 🌟 Why This Project?
-
-Our goal is to demonstrate how Apple frameworks can extend beyond traditional mobile applications by integrating with IoT devices to create richer and more interactive user experiences.
-
-Rather than simply notifying users of potential tension episodes, our solution combines **HealthKit**, **Core Motion**, and **Core Bluetooth** to identify potential tension episodes, initiate an IoT-assisted tension-relief session, and provide meaningful recovery analytics. Through this project, we explore how Apple's ecosystem can seamlessly connect physiological monitoring with real-world interaction.
