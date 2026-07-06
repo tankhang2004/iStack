@@ -157,6 +157,7 @@ The app strictly needs `NSBluetoothAlwaysUsageDescription`, Health (Heart Rate &
                       • Heart rate timeline
                       • Punch count & intensity
                       • Overall session statistics
+```
 
 ### 📡 Detailed Interaction Flow
 ```mermaid
@@ -239,3 +240,4 @@ The app strictly needs `NSBluetoothAlwaysUsageDescription`, Health (Heart Rate &
         Watch->>Watch: End Extended Runtime Session
         App->>App: Update Session endTime
         App-->>User: Display dashboard<br/>• Validated tension events<br/>• Recovery times<br/>• Heart rate timeline<br/>• Punch statistics
+```
