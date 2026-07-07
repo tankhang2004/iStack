@@ -18,6 +18,10 @@ struct ActivityView: View {
     private var categories: [Category]
 
     @State private var showAddCategory = false
+    
+    private func deleteCategory(_ category: Category) {
+        modelContext.delete(category)
+    }
 
     var body: some View {
 
@@ -62,25 +66,46 @@ struct ActivityView: View {
                     .font(.system(size: 20))
                     .foregroundStyle(.primary)
 
-                    ScrollView(showsIndicators: false) {
+                    List {
+                        ForEach(categories) { category in
 
-                        VStack(spacing: 18) {
-
-                            ForEach(categories) { category in
-
-                                ActivityCard(title: category.name) {
+                            ActivityCard(
+                                title: category.name,
+                                action: {
                                     print(category.name)
                                 }
+                            )
+                            .listRowInsets(EdgeInsets(top: 9, leading: 0, bottom: 9, trailing: 0))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+
+                                Button(role: .destructive) {
+                                    modelContext.delete(category)
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
                             }
+                        }
+
+                        HStack {
+                            Spacer()
 
                             ActivityButton {
                                 withAnimation(.spring(response: 0.35)) {
                                     showAddCategory = true
                                 }
                             }
+
+                            Spacer()
                         }
-                        .padding(.top, 10)
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+
                     }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .background(Color.clear)
 
                     Spacer()
                 }
