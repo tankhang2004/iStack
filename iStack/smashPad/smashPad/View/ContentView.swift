@@ -40,8 +40,8 @@ struct ContentView: View {
                         .foregroundColor(.secondary)
                 }
                 
-                Divider()
-                    .padding(.horizontal)
+//                Divider()
+//                    .padding(.horizontal)
                 
                 // MARK: - 2. SMASH METRICS (ESP32 Punch Data)
                 VStack(spacing: 15) {
@@ -71,13 +71,12 @@ struct ContentView: View {
                     }
                 }
                 
-                Divider()
-                    .padding(.horizontal)
+//                Divider()
+//                    .padding(.horizontal)
                 
                 // MARK: - 3. APPLE WATCH REMOTE CONTROL
                 VStack(spacing: 10) {
-                    Text("Apple Watch Control")
-                        .font(.headline)
+                    
                     
                     Button(action: {
                         if connectivity.isWatchSessionActive {
