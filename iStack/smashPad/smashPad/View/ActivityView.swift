@@ -11,7 +11,7 @@ import SwiftData
 struct ActivityView: View {
 
     @State private var showConnectivity = false
-
+    @State private var path = NavigationPath()
     @Environment(\.modelContext) private var modelContext
 
     @Query(sort: \Category.name)
@@ -22,10 +22,25 @@ struct ActivityView: View {
     private func deleteCategory(_ category: Category) {
         modelContext.delete(category)
     }
+    
+    private func startSession(for category: Category) {
+
+        let session = Session(
+            category: category,
+            startTime: .now,
+            averageRestingHR: 75
+        )
+
+        modelContext.insert(session)
+
+        ConnectivityManager.shared.sendStartCommandToWatch()
+
+        path.append(session)
+    }
 
     var body: some View {
 
-        NavigationStack {
+        NavigationStack(path: $path) {
 
             ZStack {
 
@@ -42,7 +57,7 @@ struct ActivityView: View {
 
                         Spacer()
 
-                        ConnectivityButton {
+                        ConnectivityButton (size: 48, iconSize: 24){
                             showConnectivity.toggle()
                         }
                         .popover(
@@ -70,11 +85,10 @@ struct ActivityView: View {
                         ForEach(categories) { category in
 
                             ActivityCard(
-                                title: category.name,
-                                action: {
-                                    print(category.name)
-                                }
-                            )
+                                title: category.name
+                            ) {
+                                startSession(for: category)
+                            }
                             .listRowInsets(EdgeInsets(top: 9, leading: 0, bottom: 9, trailing: 0))
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
@@ -124,6 +138,9 @@ struct ActivityView: View {
                     AddCategory(isPresented: $showAddCategory)
                         .transition(.scale(scale: 0.9).combined(with: .opacity))
                 }
+            }
+            .navigationDestination(for: Session.self) { session in
+                TrackingPage(session: session)
             }
             .task {
                 createDefaultCategories()

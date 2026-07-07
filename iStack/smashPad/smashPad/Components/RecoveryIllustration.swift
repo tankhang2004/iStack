@@ -71,7 +71,7 @@ struct RecoveryIllustration: View {
                                 .font(.title2)
                                 .foregroundStyle(.green)
 
-                            Image(systemName: "figure.strengthtraining.traditional")
+                            Image(systemName: "bolt.heart.fill")
                                 .font(.title2)
                                 .foregroundStyle(.orange)
 
@@ -97,7 +97,7 @@ struct RecoveryIllustration: View {
                 .foregroundStyle(.green)
                 .offset(x: 130, y: -20)
 
-            Image(systemName: "figure.strengthtraining.traditional")
+            Image(systemName: "bolt.heart.fill")
                 .font(.system(size: 34))
                 .foregroundStyle(.orange)
                 .offset(x: -120, y: 110)

@@ -17,6 +17,7 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "615265922FF4E1CE00796BC6"
                BuildableName = "smashPad.app"
+               BlueprintName = "smashPad"
                ReferencedContainer = "container:smashPad.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -46,6 +47,7 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "615265922FF4E1CE00796BC6"
             BuildableName = "smashPad.app"
+            BlueprintName = "smashPad"
             ReferencedContainer = "container:smashPad.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -62,6 +64,7 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "615265922FF4E1CE00796BC6"
             BuildableName = "smashPad.app"
+            BlueprintName = "smashPad"
             ReferencedContainer = "container:smashPad.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
