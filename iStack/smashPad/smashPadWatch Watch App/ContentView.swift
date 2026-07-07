@@ -15,14 +15,33 @@ struct ContentView: View {
             VStack(spacing: 12) {
                 // 1. Condition with no authorization
                 if !hkService.isAuthorized {
-                    Text("Need Sensor Access")
-                        .font(.footnote)
-                        .foregroundColor(.gray)
-                    
-                    Button("Give Access to HealthKit") {
-                        hkService.requestAuthorization()
+                    VStack(spacing: 14) {
+
+                        Image(systemName: "heart.circle.fill")
+                            .font(.system(size: 36))
+                            .foregroundStyle(.red)
+
+                        Text("Allow Heart Rate Access")
+                            .font(.headline)
+                            .multilineTextAlignment(.center)
+
+                        Text("Your heart rate is used to detect potential tension and start recovery sessions.")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+
+                        Button {
+                            hkService.requestAuthorization()
+                        } label: {
+                            Text("Continue")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(Color(red: 109/255, green: 124/255, blue: 255/255))
+                        .frame(width: 110)
                     }
-                    .tint(.blue)
+                    .padding(.horizontal)
+                    .padding(.top, -14)
                 }
                 // 2. Condition with authorization
                 else {
@@ -83,6 +102,7 @@ struct ContentView: View {
                 }
             }
             .padding(.horizontal)
+            .padding(.top, -14)
         }
     }
 }

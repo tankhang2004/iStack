@@ -47,7 +47,7 @@ struct OnboardPage: View {
                         .foregroundStyle(Color(.systemBackground))
                         .frame(maxWidth: 180)
                         .frame(height: 56)
-                        .background(.primary)
+                        .background(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 18))
                 }
 

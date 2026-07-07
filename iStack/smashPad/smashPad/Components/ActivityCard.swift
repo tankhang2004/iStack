@@ -44,7 +44,10 @@ struct ActivityCard: View {
 }
 
 #Preview {
-    ActivityCard(title: "Studying") { }
-        .padding()
-        .preferredColorScheme(.dark)
+    ActivityCard(
+        title: "Studying",
+        action: {}
+    )
+    .padding()
+    .preferredColorScheme(.dark)
 }

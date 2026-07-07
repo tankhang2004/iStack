@@ -8,13 +8,12 @@
 import SwiftUI
 
 struct ConnectivityButton: View {
-
     @Environment(\.colorScheme) private var colorScheme
 
     let action: () -> Void
 
     var body: some View {
-
+        
         Button(action: action) {
             Image(systemName: "point.3.connected.trianglepath.dotted")
                 .font(.system(size: 24, weight: .heavy))

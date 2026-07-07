@@ -15,6 +15,11 @@ class ConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
     @Published var currentStatus: String = "relaxed"
     // Property to track watch session state on the iPhone UI
     @Published var isWatchSessionActive: Bool = false
+#if os(iOS)
+    
+    @Published var isWatchConnected = false
+    
+#endif
     
     private override init() {
         super.init()
@@ -78,7 +83,7 @@ class ConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
             }
             
             // 🌟 2. Apple Watch receiving commands from iPhone
-            #if os(watchOS)
+#if os(watchOS)
             if let command = message["command"] as? String {
                 print("⌚️ Watch received command: \(command)")
                 if command == "start" {
@@ -87,17 +92,41 @@ class ConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
                     HealthKitService.shared.stopSession()
                 }
             }
-            #endif
+#endif
         }
     }
     
     // MARK: - WCSession Delegate Boilerplate
-    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {}
+    func session(
+        _ session: WCSession,
+        activationDidCompleteWith activationState: WCSessionActivationState,
+        error: Error?
+    ) {
+
+        #if os(iOS)
+        DispatchQueue.main.async {
+            self.isWatchConnected =
+                session.isPaired &&
+                session.isWatchAppInstalled
+        }
+        #endif
+    }
     
-    #if os(iOS)
+    func sessionReachabilityDidChange(_ session: WCSession) {
+
+        #if os(iOS)
+        DispatchQueue.main.async {
+            self.isWatchConnected =
+                session.isReachable ||
+                (session.isPaired && session.isWatchAppInstalled)
+        }
+        #endif
+    }
+    
+#if os(iOS)
     func sessionDidBecomeInactive(_ session: WCSession) {}
     func sessionDidDeactivate(_ session: WCSession) {
         WCSession.default.activate()
     }
-    #endif
+#endif
 }

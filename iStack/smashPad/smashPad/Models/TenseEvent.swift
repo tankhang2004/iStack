@@ -39,3 +39,12 @@ final class TenseEvent {
         self.session = session
     }
 }
+
+extension TenseEvent {
+    /// The window to shade on the heart rate chart: from detection through the end of recovery.
+    /// Falls back to recoveryStartedAt if recovery hasn't ended yet, or nil if not yet started.
+    var shadedRange: (start: Date, end: Date)? {
+        guard let end = recoveryEndedAt ?? recoveryStartedAt else { return nil }
+        return (detectedAt, end)
+    }
+}

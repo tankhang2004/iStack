@@ -34,10 +34,8 @@ struct AddCategory: View {
                 TextField("e.g. Reading", text: $categoryName)
                     .textFieldStyle(.plain)
                     .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 14)
-                            .fill(Color(.secondarySystemBackground))
-                    )
+                    .background(.ultraThinMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
             }
             
             HStack {
@@ -49,13 +47,16 @@ struct AddCategory: View {
                 } label: {
                     Text("Cancel")
                         .fontWeight(.medium)
-                        .frame(width: 55)
-                        .padding(.horizontal, 20)
-                        .frame(height: 46)
-                        .background(Color(.secondarySystemBackground))
+                        .foregroundStyle(.primary)
+                        .frame(width: 90, height: 46)
+                        .background(.regularMaterial)
                         .clipShape(Capsule())
+                        .overlay {
+                            Capsule()
+                                .stroke(.white.opacity(0.12), lineWidth: 1)
+                        }
                 }
-                .foregroundStyle(.primary)
+                .buttonStyle(.plain)
                 Spacer()
                 
                 Button("Save") {
@@ -75,9 +76,18 @@ struct AddCategory: View {
         }
         .padding(24)
         .frame(maxWidth: 340)
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 28))
-        .shadow(radius: 30)
+        .glassEffect(
+            in: RoundedRectangle(cornerRadius: 30, style: .continuous)
+        )
+        .shadow(
+            color: .black.opacity(0.18),
+            radius: 35,
+            y: 12
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(.white.opacity(0.18), lineWidth: 1)
+        }
     }
     
     private func saveCategory() {

@@ -14,15 +14,11 @@ struct RootView: View {
     private var hasSeenOnboarding = false
 
     var body: some View {
-
         Group {
-
-            if hasSeenOnboarding {
-                ContentView()
+            if !hasSeenOnboarding {
+                OnboardPage()
             } else {
-
                 TabView {
-
                     ActivityView()
                         .tabItem {
                             Label("Activity", systemImage: "heart.fill")
@@ -42,6 +38,7 @@ struct RootView: View {
 #Preview {
 
     UserDefaults.standard.set(false, forKey: "hasSeenOnboarding")
+    UserDefaults.standard.removeObject(forKey: "hasSeenOnboarding")
 
     return RootView()
         .preferredColorScheme(.dark)

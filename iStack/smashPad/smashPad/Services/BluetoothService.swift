@@ -9,6 +9,7 @@ class BluetoothService: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     @Published var isConnected = false
     @Published var lastPunchIntensity: Double = 0.0
     @Published var punchCount: Int = 0
+    @Published var isBluetoothPoweredOn = false
     
     private var centralManager: CBCentralManager!
     private var pillowPeripheral: CBPeripheral?
@@ -27,11 +28,19 @@ class BluetoothService: NSObject, ObservableObject, CBCentralManagerDelegate, CB
     
     // MARK: - CBCentralManagerDelegate
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        DispatchQueue.main.async {
+            self.isBluetoothPoweredOn = (central.state == .poweredOn)
+        }
+
         if central.state == .poweredOn {
             print("🔵 Bluetooth is Active! Scanning for SmashPad_Bantal...")
             centralManager.scanForPeripherals(withServices: [serviceUUID], options: nil)
         } else {
             print("🔴 Bluetooth is off or unavailable.")
+
+            DispatchQueue.main.async {
+                self.isConnected = false
+            }
         }
     }
     
@@ -128,5 +137,22 @@ class BluetoothService: NSObject, ObservableObject, CBCentralManagerDelegate, CB
         let data = Data(command)
         peripheral.writeValue(data, for: rxChar, type: .withResponse)
         print("📱 iOS Sending: TURN OFF LIGHT (0x00)")
+    }
+    
+    func scanAgain() {
+
+        guard centralManager.state == .poweredOn else {
+            print("Bluetooth is not powered on.")
+            return
+        }
+
+        centralManager.stopScan()
+
+        centralManager.scanForPeripherals(
+            withServices: [serviceUUID],
+            options: nil
+        )
+
+        print("🔄 Scanning again...")
     }
 }
