@@ -7,9 +7,8 @@
 
 import Foundation
 import HealthKit
-import Combine
-import WatchKit
 import CoreMotion
+import Combine
 
 class HealthKitService: NSObject, ObservableObject, HKWorkoutSessionDelegate {
     static let shared = HealthKitService()
@@ -26,8 +25,7 @@ class HealthKitService: NSObject, ObservableObject, HKWorkoutSessionDelegate {
     @Published var isPaused = false
     
     @Published var isStationary: Bool = true
-    private var stressStrikeCount = 0
-    private let requiredStressStrikes = 3
+    private var thresholdStartTime: Date?
     
     private override init() {
         super.init()
@@ -36,68 +34,111 @@ class HealthKitService: NSObject, ObservableObject, HKWorkoutSessionDelegate {
     
     func requestAuthorization() {
         guard let hrType = HKQuantityType.quantityType(forIdentifier: .heartRate),
-              let rhrType = HKQuantityType.quantityType(forIdentifier: .restingHeartRate) else { return }
+              let rhrType = HKQuantityType.quantityType(forIdentifier: .restingHeartRate) else {
+            return
+        }
         
-        // Ask Permission to get Regular Heart Rate and Resting Heart Rate
-        let typesToRead: Set = [hrType, rhrType]
+        let typesToRead: Set<HKObjectType> = [hrType, rhrType]
         
         healthStore.requestAuthorization(toShare: nil, read: typesToRead) { success, _ in
             DispatchQueue.main.async {
                 self.isAuthorized = success
+                
                 if success {
-                    // if has permission, get user's RHR from database
                     self.fetchRestingHeartRate()
                 }
             }
         }
     }
     
-    // MARK: - Fetch user's real baseline heartrate
+    // MARK: - Fetch Resting Heart Rate
     private func fetchRestingHeartRate() {
-        guard let rhrType = HKQuantityType.quantityType(forIdentifier: .restingHeartRate) else { return }
+        guard let rhrType = HKQuantityType.quantityType(forIdentifier: .restingHeartRate) else {
+            return
+        }
         
-        // Pull average RHR data from last 7 days
-        let calendar = Calendar.current
-        let oneWeekAgo = calendar.date(byAdding: .day, value: -7, to: Date())
-        let predicate = HKQuery.predicateForSamples(withStart: oneWeekAgo, end: Date(), options: .strictStartDate)
+        let oneWeekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date())!
         
-        let query = HKStatisticsQuery(quantityType: rhrType, quantitySamplePredicate: predicate, options: .discreteAverage) { _, result, error in
-            if let result = result, let average = result.averageQuantity() {
-                let rhr = average.doubleValue(for: HKUnit(from: "count/min"))
-                DispatchQueue.main.async {
+        let predicate = HKQuery.predicateForSamples(
+            withStart: oneWeekAgo,
+            end: Date(),
+            options: .strictStartDate
+        )
+        
+        let query = HKStatisticsQuery(
+            quantityType: rhrType,
+            quantitySamplePredicate: predicate,
+            options: .discreteAverage
+        ) { _, result, _ in
+            
+            DispatchQueue.main.async {
+                
+                if let average = result?.averageQuantity() {
+                    
+                    let rhr = average.doubleValue(for: HKUnit(from: "count/min"))
+                    
                     self.restingHeartRate = rhr
+                    
                     ConnectivityManager.shared.sendRestingHeartRate(rhr)
-                    print("✅ Real RHR Found: \(rhr) BPM")
+                    
+                    print("✅ Resting HR: \(rhr) BPM")
+                    
+                } else {
+                    
+                    self.restingHeartRate = 75
+                    
+                    ConnectivityManager.shared.sendRestingHeartRate(75)
+                    
+                    print("⚠️ No Resting HR found. Using 75 BPM.")
                 }
-            } else {
-                print("⚠️ No RHR data on Apple Health, using default 75 BPM")
             }
         }
+        
         healthStore.execute(query)
     }
     
     // MARK: - Session Control (FIXED: Separated into Start and Stop for iPhone Control)
     func startSession() {
         guard !isSessionActive else { return }
+        guard workoutSession == nil else { return }
+        
         isPaused = false
-        runtimeSession = WKExtendedRuntimeSession()
-        runtimeSession?.delegate = self
-        runtimeSession?.start()
         
-        startHeartRateQuery()
-        startMotionTracking()
+        let configuration = HKWorkoutConfiguration()
+        configuration.activityType = .mindAndBody
+        configuration.locationType = .unknown
         
-        DispatchQueue.main.async {
-            self.isSessionActive = true
+        do {
+            workoutSession = try HKWorkoutSession(
+                healthStore: healthStore,
+                configuration: configuration
+            )
+            
+            workoutSession?.delegate = self
+            workoutSession?.startActivity(with: Date())
+            
+            startHeartRateQuery()
+            startMotionTracking()
+            
+            isSessionActive = true
+            
             ConnectivityManager.shared.sendSessionSync(isActive: true)
+            
+            print("⌚️ Session Started")
+            
+        } catch {
+            
+            print("❌ \(error.localizedDescription)")
         }
-        print("⌚️ Watch Session STARTED by iPhone")
     }
     
     func stopSession() {
+        
         guard isSessionActive else { return }
         
-        runtimeSession?.invalidate()
+        workoutSession?.end()
+        workoutSession = nil
+        
         motionActivityManager.stopActivityUpdates()
         
         if let query = activeHeartRateQuery {
@@ -105,59 +146,24 @@ class HealthKitService: NSObject, ObservableObject, HKWorkoutSessionDelegate {
             activeHeartRateQuery = nil
         }
         
-        DispatchQueue.main.async {
-            
-            self.currentHeartRate = 0
-            self.isPaused = false
-            self.isSessionActive = false
-            ConnectivityManager.shared.sendSessionSync(isActive: false)
-        }
-        print("⌚️ Watch Session STOPPED by iPhone. All sensors are OFF.")
+        currentHeartRate = 0
+        isPaused = false
+        isSessionActive = false
+        
+        ConnectivityManager.shared.sendSessionSync(isActive: false)
+        
+        print("🛑 Session Stopped")
     }
+    
     func pauseSession() {
         
         guard isSessionActive else { return }
         guard !isPaused else { return }
+        
         isPaused = true
         
         if let query = activeHeartRateQuery {
-            guard !isSessionActive else { return }
-            
-            // 3. new workout session config
-            let configuration = HKWorkoutConfiguration()
-            configuration.activityType = .mindAndBody // Needs to be the same what iphone sent
-            configuration.locationType = .unknown
-            
-            do {
-                workoutSession = try HKWorkoutSession(healthStore: healthStore, configuration: configuration)
-                workoutSession?.delegate = self
-                workoutSession?.startActivity(with: Date())
-                
-                startHeartRateQuery()
-                startMotionTracking()
-                
-                DispatchQueue.main.async {
-                    self.isSessionActive = true
-                    ConnectivityManager.shared.sendSessionSync(isActive: true)
-                }
-                print("⌚️ Watch Session STARTED by iPhone")
-                
-            } catch {
-                print("❌ Failed to start workout session: \(error.localizedDescription)")
-            }
-        }
-        
-    func stopSession() {
-            guard isSessionActive else { return }
-            
-            // 4. STOP WORKOUT SESSION
-            workoutSession?.end()
-            workoutSession = nil
-            
-            motionActivityManager.stopActivityUpdates()
-            
             healthStore.stop(query)
-            
             activeHeartRateQuery = nil
         }
         
@@ -167,107 +173,99 @@ class HealthKitService: NSObject, ObservableObject, HKWorkoutSessionDelegate {
     }
     
     func resumeSession() {
-        
         guard isSessionActive else { return }
-        
         guard isPaused else { return }
-        
+
         isPaused = false
-        
+
         startHeartRateQuery()
-        
         startMotionTracking()
-        
+
         print("▶️ Session Resumed")
     }
-            DispatchQueue.main.async {
-                self.currentHeartRate = 0.0 // Reset number on watch screen to 0
-                self.isSessionActive = false
-                ConnectivityManager.shared.sendSessionSync(isActive: false)
-            }
-            print("⌚️ Watch Session STOPPED by iPhone. All sensors are OFF.")
-        }
-    
-    // MARK: - Sensor CoreMotion
-    private func startMotionTracking() {
-        if CMMotionActivityManager.isActivityAvailable() {
-            motionActivityManager.startActivityUpdates(to: .main) { [weak self] activity in
-                guard let activity = activity else { return }
-                
-                // Considered Stationary if not walking, running, cycling
-                let isMoving = activity.walking || activity.running || activity.cycling
-                self?.isStationary = !isMoving
-                
-                print(isMoving ? "Moving" : "Stationary")
-            }
-        }
-    }
-    
-    // MARK: - Sensor Real-Time
-    private func startHeartRateQuery() {
-        guard let hrType = HKQuantityType.quantityType(forIdentifier: .heartRate) else { return }
-        let predicate = HKQuery.predicateForSamples(withStart: Date(), end: nil, options: .strictStartDate)
-        
-        let query = HKAnchoredObjectQuery(type: hrType, predicate: predicate, anchor: nil, limit: HKObjectQueryNoLimit) { [weak self] _, samples, _, _, _ in
-            self?.process(samples)
-        }
-        query.updateHandler = { [weak self] _, samples, _, _, _ in
-            self?.process(samples)
-        }
-        self.activeHeartRateQuery = query
-        healthStore.execute(query)
-    }
-    
-    // MARK: - Stress Logic + DEBOUNCE + COREMOTION
-    private func process(_ samples: [HKSample]?) {
-        guard !isPaused else { return }
-        guard let sample = samples?.last as? HKQuantitySample else { return }
-        let bpm = sample.quantity.doubleValue(for: HKUnit(from: "count/min"))
-        
-        DispatchQueue.main.async {
-            self.currentHeartRate = bpm
-            ConnectivityManager.shared.sendHeartRate(bpm)
-            // Formula: Considered Stress if BPM is more than 30% from RHR
-            let stressThreshold = self.restingHeartRate * 1.30
-            // Formula: Considered Back to relaxed if BPM falls near RHR
-            let relaxedThreshold = self.restingHeartRate * 1.10
+
+// MARK: - Sensor CoreMotion
+private func startMotionTracking() {
+    if CMMotionActivityManager.isActivityAvailable() {
+        motionActivityManager.startActivityUpdates(to: .main) { [weak self] activity in
+            guard let activity = activity else { return }
             
-            if bpm >= stressThreshold {
-                if bpm >= stressThreshold {
-                    
-                    if self.isStationary {
-                        
-                        self.stressStrikeCount += 1
-                        
-                        if self.stressStrikeCount >= self.requiredStressStrikes {
-                            
-                            ConnectivityManager.shared.sendStressAlert()
-                            
-                            self.stressStrikeCount = 0
-                        }
-                        
-                    } else {
-                        
-                        self.stressStrikeCount = 0
-                        
-                    }
-                }
-                print("🔥 STRESS DETECTED! (BPM: \(bpm) passed threshold \(stressThreshold))")
-            } else if bpm <= relaxedThreshold {
-                self.stressStrikeCount = 0
-                ConnectivityManager.shared.sendRelaxedAlert()
-                print("🍏 RELAXED. (BPM: \(bpm) is safe below \(relaxedThreshold))")
-            } else {
-                self.stressStrikeCount = 0 //grey area, reset strike
-            }
+            // Considered Stationary if not walking, running, cycling
+            let isMoving = activity.walking || activity.running || activity.cycling
+            self?.isStationary = !isMoving
+            
+            print(isMoving ? "Moving" : "Stationary")
         }
     }
+}
+
+// MARK: - Sensor Real-Time
+private func startHeartRateQuery() {
+    guard activeHeartRateQuery == nil else { return }
+    guard let hrType = HKQuantityType.quantityType(forIdentifier: .heartRate) else { return }
+    let predicate = HKQuery.predicateForSamples(withStart: Date(), end: nil, options: .strictStartDate)
     
-    func workoutSession(_ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState, from fromState: HKWorkoutSessionState, date: Date) {
-            print("Workout Session State Changed to: \(toState.rawValue)")
-        }
-        
-    func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {
-        print("Workout Session Failed: \(error.localizedDescription)")
+    let query = HKAnchoredObjectQuery(type: hrType, predicate: predicate, anchor: nil, limit: HKObjectQueryNoLimit) { [weak self] _, samples, _, _, _ in
+        self?.process(samples)
     }
+    query.updateHandler = { [weak self] _, samples, _, _, _ in
+        self?.process(samples)
+    }
+    self.activeHeartRateQuery = query
+    healthStore.execute(query)
+}
+
+// MARK: - Stress Logic + DEBOUNCE + COREMOTION
+private func process(_ samples: [HKSample]?) {
+    guard !isPaused else { return }
+    guard let sample = samples?.last as? HKQuantitySample else { return }
+    let bpm = sample.quantity.doubleValue(for: HKUnit(from: "count/min"))
+    
+    DispatchQueue.main.async {
+        self.currentHeartRate = bpm
+        ConnectivityManager.shared.sendHeartRate(bpm)
+        // Formula: Considered Stress if BPM is more than 30% from RHR
+        let stressThreshold = self.restingHeartRate * 1.30
+        // Formula: Considered Back to relaxed if BPM falls near RHR
+        let relaxedThreshold = self.restingHeartRate * 1.10
+        
+        if bpm >= stressThreshold {
+
+            if self.isStationary {
+
+                if self.thresholdStartTime == nil {
+                    self.thresholdStartTime = Date()
+                }
+
+                if let start = self.thresholdStartTime,
+                   Date().timeIntervalSince(start) >= 30 {
+
+                    ConnectivityManager.shared.sendStressAlert()
+
+                    self.thresholdStartTime = nil
+                }
+
+            } else {
+
+                self.thresholdStartTime = nil
+            }
+
+            print("🔥 STRESS DETECTED")
+        } else if bpm <= relaxedThreshold {
+            self.thresholdStartTime = nil
+            ConnectivityManager.shared.sendRelaxedAlert()
+            print("🍏 RELAXED. (BPM: \(bpm) is safe below \(relaxedThreshold))")
+        } else {
+            self.thresholdStartTime = nil
+        }
+    }
+}
+
+func workoutSession(_ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState, from fromState: HKWorkoutSessionState, date: Date) {
+    print("Workout Session State Changed to: \(toState.rawValue)")
+}
+
+func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {
+    print("Workout Session Failed: \(error.localizedDescription)")
+}
 }
