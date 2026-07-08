@@ -200,29 +200,34 @@ private func startMotionTracking() {
 }
 
 // MARK: - Sensor Real-Time
-private func startHeartRateQuery() {
-    guard activeHeartRateQuery == nil else { return }
-    guard let hrType = HKQuantityType.quantityType(forIdentifier: .heartRate) else { return }
-    let predicate = HKQuery.predicateForSamples(withStart: Date(), end: nil, options: .strictStartDate)
-    
-    let query = HKAnchoredObjectQuery(type: hrType, predicate: predicate, anchor: nil, limit: HKObjectQueryNoLimit) { [weak self] _, samples, _, _, _ in
-        self?.process(samples)
-    }
-    query.updateHandler = { [weak self] _, samples, _, _, _ in
-        self?.process(samples)
-    }
-    self.activeHeartRateQuery = query
-    healthStore.execute(query)
-}
+    private func startHeartRateQuery() {
+            guard let hrType = HKQuantityType.quantityType(forIdentifier: .heartRate) else { return }
+            
+            let startDate = Date().addingTimeInterval(-10)
+            let predicate = HKQuery.predicateForSamples(withStart: startDate, end: nil, options: .strictStartDate)
+            
+            let query = HKAnchoredObjectQuery(type: hrType, predicate: predicate, anchor: nil, limit: HKObjectQueryNoLimit) { [weak self] _, samples, _, _, _ in
+                self?.process(samples)
+            }
+            query.updateHandler = { [weak self] _, samples, _, _, _ in
+                self?.process(samples)
+            }
+            self.activeHeartRateQuery = query
+            healthStore.execute(query)
+        }
 
 // MARK: - Stress Logic + DEBOUNCE + COREMOTION
 private func process(_ samples: [HKSample]?) {
-    guard !isPaused else { return }
-    guard let sample = samples?.last as? HKQuantitySample else { return }
-    let bpm = sample.quantity.doubleValue(for: HKUnit(from: "count/min"))
+    guard let validSamples = samples as? [HKQuantitySample], !validSamples.isEmpty else {
+        return
+    }
+    guard let latestSample = validSamples.max(by: { $0.endDate < $1.endDate }) else { return }
+    
+    let bpm = latestSample.quantity.doubleValue(for: HKUnit(from: "count/min"))
     
     DispatchQueue.main.async {
         self.currentHeartRate = bpm
+        print("🫀 HR Terbaca: \(bpm) BPM")
         ConnectivityManager.shared.sendHeartRate(bpm)
         // Formula: Considered Stress if BPM is more than 30% from RHR
         let stressThreshold = self.restingHeartRate * 1.30

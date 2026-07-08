@@ -9,7 +9,7 @@ import SwiftUI
 import HealthKit
 
 struct ContentView: View {
-    @ObservedObject private var hkService = HealthKitService.shared
+    @StateObject private var hkService = HealthKitService.shared
     
     var body: some View {
         ScrollView {

@@ -82,11 +82,17 @@ class ConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
         }
     
     func sendStopCommandToWatch() {
+        let stopMessage = ["command": "stop"]
+        
         if WCSession.default.isReachable {
-            WCSession.default.sendMessage(["command": "stop"], replyHandler: nil)
+            WCSession.default.sendMessage(stopMessage, replyHandler: nil)
             isWatchSessionActive = false // Update UI state immediately
             print("📱 iPhone sent STOP command to Watch via WCSession")
+        } else {
+            WCSession.default.transferUserInfo(stopMessage)
+            print("📱 iPhone sent STOP command via transferUserInfo (Background Delivery)")
         }
+        isWatchSessionActive = false
     }
     
     // MARK: - Message Receiver (Handles incoming messages for BOTH devices)
@@ -140,6 +146,28 @@ class ConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
                 }
             }
             
+#endif
+        }
+    }
+    
+    func session(_ session: WCSession, didReceiveUserInfo userInfo: [String : Any] = [:]) {
+        DispatchQueue.main.async {
+            
+            // 1. Sinkronisasi UI iPhone
+            if let sessionStatus = userInfo["sessionStatus"] as? Bool {
+                self.isWatchSessionActive = sessionStatus
+            }
+            
+            // 2. Eksekusi Perintah di Apple Watch saat layar mati
+#if os(watchOS)
+            if let command = userInfo["command"] as? String {
+                print("⌚️ Watch received BACKGROUND command: \(command)")
+                if command == "start" {
+                    HealthKitService.shared.startSession()
+                } else if command == "stop" {
+                    HealthKitService.shared.stopSession()
+                }
+            }
 #endif
         }
     }
