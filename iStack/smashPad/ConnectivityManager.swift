@@ -8,6 +8,7 @@
 import Foundation
 import WatchConnectivity
 import Combine
+import HealthKit
 
 class ConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
     static let shared = ConnectivityManager()
@@ -18,6 +19,7 @@ class ConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
 #if os(iOS)
     
     @Published var isWatchConnected = false
+    private let healthStore = HKHealthStore()
     
 #endif
     
@@ -52,20 +54,37 @@ class ConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
     
     // MARK: - Methods called by iPhone (Sending command to Apple Watch)
     func sendStartCommandToWatch() {
-        if WCSession.default.isReachable {
-            WCSession.default.sendMessage(["command": "start"], replyHandler: nil)
-            isWatchSessionActive = true // Update UI state immediately
-            print("📱 iPhone sent START command to Watch")
-        } else {
-            print("⚠️ Apple Watch is not reachable. Ensure the Watch app is open and screen is on.")
+    #if os(iOS)
+            let configuration = HKWorkoutConfiguration()
+            configuration.activityType = .mindAndBody // Cocok untuk deteksi stres
+            configuration.locationType = .unknown
+            
+            // Membangunkan Apple Watch secara paksa via HealthKit
+            healthStore.startWatchApp(with: configuration) { success, error in
+                DispatchQueue.main.async {
+                    if success {
+                        self.isWatchSessionActive = true
+                        print("📱 iPhone sent START command via HealthKit (Watch Woken Up!)")
+                    } else {
+                        print("❌ Failed to wake watch: \(error?.localizedDescription ?? "Error unknown")")
+                        
+                        // Fallback: Jika gagal (misal belum ada izin), coba pakai WCSession biasa
+                        if WCSession.default.isReachable {
+                            WCSession.default.sendMessage(["command": "start"], replyHandler: nil)
+                            self.isWatchSessionActive = true
+                            print("📱 Fallback: iPhone sent START command via WCSession")
+                        }
+                    }
+                }
+            }
+    #endif
         }
-    }
     
     func sendStopCommandToWatch() {
         if WCSession.default.isReachable {
             WCSession.default.sendMessage(["command": "stop"], replyHandler: nil)
             isWatchSessionActive = false // Update UI state immediately
-            print("📱 iPhone sent STOP command to Watch")
+            print("📱 iPhone sent STOP command to Watch via WCSession")
         }
     }
     
@@ -123,10 +142,30 @@ class ConnectivityManager: NSObject, ObservableObject, WCSessionDelegate {
         #endif
     }
     
-#if os(iOS)
-    func sessionDidBecomeInactive(_ session: WCSession) {}
-    func sessionDidDeactivate(_ session: WCSession) {
-        WCSession.default.activate()
+    #if os(iOS)
+        func sessionDidBecomeInactive(_ session: WCSession) {}
+        func sessionDidDeactivate(_ session: WCSession) {
+            WCSession.default.activate()
+        }
+    #endif
+    
+    #if os(iOS)
+    func requestHealthKitAuthorizationOnPhone() {
+        guard HKHealthStore.isHealthDataAvailable() else { return }
+        
+        let typesToShare: Set = [HKQuantityType.workoutType()]
+        
+        let typesToRead = Set<HKObjectType>()
+        
+        healthStore.requestAuthorization(toShare: typesToShare, read: typesToRead) { success, error in
+            DispatchQueue.main.async {
+                if success {
+                    print("✅ iOS HealthKit Authorization Granted")
+                } else {
+                    print("❌ iOS HealthKit Authorization Failed: \(error?.localizedDescription ?? "")")
+                }
+            }
+        }
     }
-#endif
+    #endif
 }

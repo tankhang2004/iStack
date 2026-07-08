@@ -109,6 +109,10 @@ struct ContentView: View {
                 bluetooth.turnOffPillowLED()
             }
         }
+        .onAppear {
+            // Ask permission when first shown
+            connectivity.requestHealthKitAuthorizationOnPhone()
+        }
     }
 }
 
