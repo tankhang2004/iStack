@@ -434,7 +434,7 @@
 				CODE_SIGN_ENTITLEMENTS = smashPad/smashPad.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = Q5WN2TC7VD;
+				DEVELOPMENT_TEAM = 7K9RU4HS2D;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Thump;
@@ -513,7 +513,7 @@
 				CODE_SIGN_ENTITLEMENTS = "smashPadWatch Watch App/smashPadWatch Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = Q5WN2TC7VD;
+				DEVELOPMENT_TEAM = 7K9RU4HS2D;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "smashPadWatch-Watch-App-Info.plist";

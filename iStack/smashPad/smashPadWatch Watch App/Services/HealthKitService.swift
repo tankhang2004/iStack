@@ -11,11 +11,11 @@ import Combine
 import WatchKit
 import CoreMotion
 
-class HealthKitService: NSObject, ObservableObject, WKExtendedRuntimeSessionDelegate {
+class HealthKitService: NSObject, ObservableObject, HKWorkoutSessionDelegate {
     static let shared = HealthKitService()
     
     private let healthStore = HKHealthStore()
-    private var runtimeSession: WKExtendedRuntimeSession?
+    private var workoutSession: HKWorkoutSession?
     private let motionActivityManager = CMMotionActivityManager()
     private var activeHeartRateQuery: HKQuery?
     
@@ -121,6 +121,40 @@ class HealthKitService: NSObject, ObservableObject, WKExtendedRuntimeSessionDele
         isPaused = true
         
         if let query = activeHeartRateQuery {
+            guard !isSessionActive else { return }
+            
+            // 3. new workout session config
+            let configuration = HKWorkoutConfiguration()
+            configuration.activityType = .mindAndBody // Needs to be the same what iphone sent
+            configuration.locationType = .unknown
+            
+            do {
+                workoutSession = try HKWorkoutSession(healthStore: healthStore, configuration: configuration)
+                workoutSession?.delegate = self
+                workoutSession?.startActivity(with: Date())
+                
+                startHeartRateQuery()
+                startMotionTracking()
+                
+                DispatchQueue.main.async {
+                    self.isSessionActive = true
+                    ConnectivityManager.shared.sendSessionSync(isActive: true)
+                }
+                print("⌚️ Watch Session STARTED by iPhone")
+                
+            } catch {
+                print("❌ Failed to start workout session: \(error.localizedDescription)")
+            }
+        }
+        
+    func stopSession() {
+            guard isSessionActive else { return }
+            
+            // 4. STOP WORKOUT SESSION
+            workoutSession?.end()
+            workoutSession = nil
+            
+            motionActivityManager.stopActivityUpdates()
             
             healthStore.stop(query)
             
@@ -146,6 +180,13 @@ class HealthKitService: NSObject, ObservableObject, WKExtendedRuntimeSessionDele
         
         print("▶️ Session Resumed")
     }
+            DispatchQueue.main.async {
+                self.currentHeartRate = 0.0 // Reset number on watch screen to 0
+                self.isSessionActive = false
+                ConnectivityManager.shared.sendSessionSync(isActive: false)
+            }
+            print("⌚️ Watch Session STOPPED by iPhone. All sensors are OFF.")
+        }
     
     // MARK: - Sensor CoreMotion
     private func startMotionTracking() {
@@ -222,7 +263,11 @@ class HealthKitService: NSObject, ObservableObject, WKExtendedRuntimeSessionDele
         }
     }
     
-    func extendedRuntimeSession(_ session: WKExtendedRuntimeSession, didInvalidateWith reason: WKExtendedRuntimeSessionInvalidationReason, error: Error?) {}
-    func extendedRuntimeSessionDidStart(_ session: WKExtendedRuntimeSession) {}
-    func extendedRuntimeSessionWillExpire(_ session: WKExtendedRuntimeSession) {}
+    func workoutSession(_ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState, from fromState: HKWorkoutSessionState, date: Date) {
+            print("Workout Session State Changed to: \(toState.rawValue)")
+        }
+        
+    func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {
+        print("Workout Session Failed: \(error.localizedDescription)")
+    }
 }
