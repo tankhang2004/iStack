@@ -42,6 +42,7 @@ final class HeartRate {
     }
 }
 
+
 @Model
 final class Session {
 
@@ -50,6 +51,11 @@ final class Session {
 
     var startTime: Date
     var endTime: Date?
+
+    // NEW
+    var pausedAt: Date?
+    var totalPausedDuration: TimeInterval
+
     var averageRestingHR: Int
     var category: Category
 
@@ -63,13 +69,85 @@ final class Session {
         category: Category,
         startTime: Date,
         endTime: Date? = nil,
+        pausedAt: Date? = nil,
+        totalPausedDuration: TimeInterval = 0,
         averageRestingHR: Int
     ) {
         self.id = UUID()
+
         self.category = category
+
         self.startTime = startTime
         self.endTime = endTime
+
+        self.pausedAt = pausedAt
+        self.totalPausedDuration = totalPausedDuration
+
         self.averageRestingHR = averageRestingHR
+    }
+}
+
+extension Session {
+
+    /// Falls back to "now" for a session that hasn't ended yet.
+    var displayEndTime: Date {
+        endTime ?? .now
+    }
+
+    /// Total duration including pause time.
+    var elapsedTime: TimeInterval {
+        displayEndTime.timeIntervalSince(startTime)
+    }
+
+    /// Total recovery duration.
+    var totalRecoveryDuration: TimeInterval {
+
+        tenseEvents.reduce(0) { partial, event in
+
+            guard
+                let start = event.recoveryStartedAt,
+                let end = event.recoveryEndedAt
+            else {
+                return partial
+            }
+
+            return partial + end.timeIntervalSince(start)
+        }
+    }
+
+    /// Duration excluding pause.
+    var activeDuration: TimeInterval {
+
+        max(
+            elapsedTime - totalPausedDuration,
+            0
+        )
+    }
+
+    /// Active duration excluding recovery.
+    var activityTime: TimeInterval {
+
+        max(
+            activeDuration - totalRecoveryDuration,
+            0
+        )
+    }
+
+    var allPunches: [Punch] {
+
+        tenseEvents.flatMap(\.punchData)
+    }
+
+    var punchCount: Int {
+
+        allPunches.count
+    }
+
+    var sortedHeartRates: [HeartRate] {
+
+        heartRates.sorted {
+            $0.timestamp < $1.timestamp
+        }
     }
 }
 
@@ -126,6 +204,23 @@ final class TenseEvent {
         self.recoveryStartedAt = recoveryStartedAt
         self.recoveryEndedAt = recoveryEndedAt
         self.session = session
+    }
+}
+
+extension TenseEvent {
+    /// The window to shade on the heart rate chart: from detection through the end of recovery.
+    /// Falls back to recoveryStartedAt if recovery hasn't ended yet, or nil if not yet started.
+    var shadedRange: (start: Date, end: Date)? {
+        guard let end = recoveryEndedAt ?? recoveryStartedAt else { return nil }
+        return (detectedAt, end)
+    }
+    var recoveryDuration: TimeInterval? {
+
+        guard let start = recoveryStartedAt,
+              let end = recoveryEndedAt
+        else { return nil }
+
+        return end.timeIntervalSince(start)
     }
 }
 

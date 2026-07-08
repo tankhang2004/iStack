@@ -61,7 +61,6 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "615265B02FF503B200796BC6"
             BuildableName = "smashPadWatch Watch App.app"
-            BlueprintName = "smashPadWatch Watch App"
             ReferencedContainer = "container:smashPad.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -78,7 +77,6 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "615265B02FF503B200796BC6"
             BuildableName = "smashPadWatch Watch App.app"
-            BlueprintName = "smashPadWatch Watch App"
             ReferencedContainer = "container:smashPad.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

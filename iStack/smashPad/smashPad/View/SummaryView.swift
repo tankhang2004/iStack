@@ -6,15 +6,24 @@
 import SwiftUI
 import SwiftData
 
+enum SummaryTimeRange: String, CaseIterable, Identifiable {
+    case day = "Day"
+    case week = "Week"
+    case month = "Month"
+    case year = "Year"
+    case allTime = "All Time"
+
+    var id: String { rawValue }
+}
+
 struct SummaryView: View {
 
     @Query(sort: \Session.startTime, order: .reverse)
     private var sessions: [Session]
 
-    @Query(sort: \Category.name)
-    private var categories: [Category]
-
-    @State private var selectedCategory: Category?
+    @State private var selectedRange: SummaryTimeRange = .day
+    @State private var anchorDate: Date = .now
+    @State private var showingDatePicker = false
 
     var body: some View {
         NavigationStack {
@@ -27,16 +36,17 @@ struct SummaryView: View {
                         .padding(.horizontal, DesignTokens.Spacing.md)
                         .padding(.top, DesignTokens.Spacing.sm)
 
-                    filterChips
+                    rangePicker
                         .padding(.horizontal, DesignTokens.Spacing.md)
 
-                    if groupedSessions.isEmpty {
-                        emptyState
-                    } else {
-                        ForEach(groupedSessions, id: \.month) { group in
-                            monthSection(group)
-                        }
-                    }
+                    periodButton
+                        .padding(.horizontal, DesignTokens.Spacing.md)
+
+                    statsGrid
+                        .padding(.horizontal, DesignTokens.Spacing.md)
+
+                    historySection
+                        .padding(.horizontal, DesignTokens.Spacing.md)
                 }
                 .padding(.bottom, DesignTokens.Spacing.xl)
             }
@@ -46,43 +56,119 @@ struct SummaryView: View {
             .navigationDestination(for: Session.self) { session in
                 SessionDetailView(session: session)
             }
+            .sheet(isPresented: $showingDatePicker) {
+                datePickerSheet
+            }
         }
     }
 
-    // MARK: - Sections
+    // MARK: - Range picker + period navigator
 
-    private func monthSection(_ group: MonthGroup) -> some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
-            Text(group.month)
-                .font(.title2.bold())
-                .foregroundStyle(DesignTokens.Colors.textPrimary)
-                .padding(.horizontal, DesignTokens.Spacing.md)
+    private var rangePicker: some View {
+        Picker("Time Range", selection: $selectedRange) {
+            ForEach(SummaryTimeRange.allCases) { range in
+                Text(range.rawValue).tag(range)
+            }
+        }
+        .pickerStyle(.segmented)
+    }
 
-            VStack(spacing: DesignTokens.Spacing.sm) {
-                ForEach(group.sessions) { session in
-                    NavigationLink(value: session) {
-                        SessionRowView(session: session)
-                    }
-                    .buttonStyle(.plain)
+    private var periodButton: some View {
+        Button {
+            showingDatePicker = true
+        } label: {
+            HStack(spacing: 4) {
+                Text(periodLabel)
+                    .font(.subheadline.weight(.semibold))
+                Image(systemName: "chevron.down")
+                    .font(.caption.weight(.semibold))
+            }
+            .foregroundStyle(DesignTokens.Colors.textPrimary)
+        }
+        .buttonStyle(.plain)
+        .disabled(selectedRange == .allTime)
+        .opacity(selectedRange == .allTime ? 0.4 : 1)
+    }
+
+    private var datePickerSheet: some View {
+        NavigationStack {
+            VStack {
+                DatePicker("", selection: $anchorDate, displayedComponents: .date)
+                    .datePickerStyle(.graphical)
+                    .tint(DesignTokens.Colors.accent)
+                    .padding()
+
+                Button("Jump to Today") {
+                    anchorDate = .now
+                }
+                .foregroundStyle(DesignTokens.Colors.accent)
+                .padding(.bottom)
+
+                Spacer()
+            }
+            .navigationTitle("Select Date")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { showingDatePicker = false }
                 }
             }
-            .padding(.horizontal, DesignTokens.Spacing.md)
+        }
+        .presentationDetents([.medium])
+    }
+
+    // MARK: - Stats grid
+
+    private var statsGrid: some View {
+        VStack(spacing: DesignTokens.Spacing.md) {
+            HStack {
+                statBlock(title: "Tensest Activity", value: tensestActivityName)
+                Spacer()
+                statBlock(title: "Total Punches", value: "\(totalPunches) Times")
+                Spacer()
+            }
+            HStack {
+                statBlock(title: "Tense Duration", value: totalTenseDuration.formattedMinSecLetters)
+                Spacer()
+                statBlock(title: "Avg. Recovery Time", value: averageRecoveryTimeAcrossRange.formattedMinSecLetters)
+                Spacer()
+            }
         }
     }
 
-    private var filterChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: DesignTokens.Spacing.sm) {
-                FilterChip(title: "All", isSelected: selectedCategory == nil) {
-                    selectedCategory = nil
-                }
+    private func statBlock(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xs) {
+            Text(title)
+                .font(.subheadline)
+                .foregroundStyle(DesignTokens.Colors.textSecondary)
+            Text(value)
+                .font(.title3.bold())
+                .foregroundStyle(DesignTokens.Colors.accent)
+        }
+    }
 
-                ForEach(categories) { category in
-                    FilterChip(
-                        title: category.name,
-                        isSelected: selectedCategory?.id == category.id
-                    ) {
-                        selectedCategory = category
+    // MARK: - History
+
+    private var historySection: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sm) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("History")
+                    .font(.title2.bold())
+                    .foregroundStyle(DesignTokens.Colors.textPrimary)
+                Text("\(filteredSessions.count) ACTIVITIES")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(DesignTokens.Colors.textSecondary)
+            }
+
+            if filteredSessions.isEmpty {
+                emptyState
+            } else {
+                VStack(spacing: DesignTokens.Spacing.sm) {
+                    ForEach(filteredSessions) { session in
+                        NavigationLink(value: session) {
+                            SessionRowView(session: session)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -94,64 +180,105 @@ struct SummaryView: View {
             Image(systemName: "tray")
                 .font(.system(size: 40))
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
-            Text("No sessions yet")
+            Text("No sessions in this period")
                 .font(DesignTokens.Typography.title3)
                 .foregroundStyle(DesignTokens.Colors.textSecondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, DesignTokens.Spacing.xl)
+        .padding(.top, DesignTokens.Spacing.lg)
     }
 
-    // MARK: - Grouping
+    // MARK: - Period math
 
-    private struct MonthGroup {
-        let month: String
-        let sortDate: Date
-        let sessions: [Session]
+    private var periodBounds: (start: Date, end: Date)? {
+        let calendar = Calendar.current
+        switch selectedRange {
+        case .day:
+            let start = calendar.startOfDay(for: anchorDate)
+            let end = calendar.date(byAdding: .day, value: 1, to: start)!
+            return (start, end)
+        case .week:
+            guard let interval = calendar.dateInterval(of: .weekOfYear, for: anchorDate) else { return nil }
+            return (interval.start, interval.end)
+        case .month:
+            guard let interval = calendar.dateInterval(of: .month, for: anchorDate) else { return nil }
+            return (interval.start, interval.end)
+        case .year:
+            guard let interval = calendar.dateInterval(of: .year, for: anchorDate) else { return nil }
+            return (interval.start, interval.end)
+        case .allTime:
+            return nil
+        }
     }
+
+    private var periodLabel: String {
+        let calendar = Calendar.current
+        switch selectedRange {
+        case .day:
+            if calendar.isDateInToday(anchorDate) { return "Today" }
+            if calendar.isDateInYesterday(anchorDate) { return "Yesterday" }
+            let formatter = DateFormatter()
+            formatter.dateFormat = "d MMM"
+            return formatter.string(from: anchorDate)
+        case .week:
+            if let thisWeek = calendar.dateInterval(of: .weekOfYear, for: .now), thisWeek.contains(anchorDate) {
+                return "This Week"
+            }
+            let formatter = DateFormatter()
+            formatter.dateFormat = "d MMM"
+            if let interval = calendar.dateInterval(of: .weekOfYear, for: anchorDate) {
+                return "Week of \(formatter.string(from: interval.start))"
+            }
+            return "This Week"
+        case .month:
+            if calendar.isDate(anchorDate, equalTo: .now, toGranularity: .month) { return "This Month" }
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMMM yyyy"
+            return formatter.string(from: anchorDate)
+        case .year:
+            if calendar.isDate(anchorDate, equalTo: .now, toGranularity: .year) { return "This Year" }
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy"
+            return formatter.string(from: anchorDate)
+        case .allTime:
+            return "All Time"
+        }
+    }
+
+    // MARK: - Filtering & aggregate stats
 
     private var filteredSessions: [Session] {
-        guard let selectedCategory else { return sessions }
-        return sessions.filter { $0.category.id == selectedCategory.id }
+        guard let bounds = periodBounds else { return sessions }
+        return sessions.filter { $0.startTime >= bounds.start && $0.startTime < bounds.end }
     }
 
-    private var groupedSessions: [MonthGroup] {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
-
-        let grouped = Dictionary(grouping: filteredSessions) { session in
-            formatter.string(from: session.startTime)
-        }
-
-        return grouped
-            .map { key, value -> MonthGroup in
-                let sorted = value.sorted { $0.startTime > $1.startTime }
-                return MonthGroup(month: key, sortDate: sorted.first?.startTime ?? .distantPast, sessions: sorted)
-            }
-            .sorted { $0.sortDate > $1.sortDate }
+    private var totalPunches: Int {
+        filteredSessions.reduce(0) { $0 + $1.punchCount }
     }
-}
 
-// MARK: - Filter Chip
+    private var totalTenseDuration: TimeInterval {
+        filteredSessions.reduce(0) { $0 + $1.totalTenseDuration }
+    }
 
-private struct FilterChip: View {
-    let title: String
-    let isSelected: Bool
-    let action: () -> Void
+    private var allTenseEventsInRange: [TenseEvent] {
+        filteredSessions.flatMap(\.tenseEvents)
+    }
 
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(isSelected ? Color.black : DesignTokens.Colors.textPrimary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(
-                    Capsule()
-                        .fill(isSelected ? DesignTokens.Colors.accent : DesignTokens.Colors.chipFill)
-                )
+    private var averageRecoveryTimeAcrossRange: TimeInterval {
+        let durations = allTenseEventsInRange.compactMap(\.recoveryDuration)
+        guard !durations.isEmpty else { return 0 }
+        return durations.reduce(0, +) / Double(durations.count)
+    }
+
+    private var tensestActivityName: String {
+        let groups = Dictionary(grouping: filteredSessions, by: { $0.category.id })
+        let totals = groups.mapValues { sessionsInGroup in
+            sessionsInGroup.reduce(0) { $0 + $1.totalTenseDuration }
         }
-        .buttonStyle(.plain)
+        guard let winner = totals.max(by: { $0.value < $1.value }), winner.value > 0 else {
+            return "—"
+        }
+        return filteredSessions.first(where: { $0.category.id == winner.key })?.category.name ?? "—"
     }
 }
 
@@ -167,7 +294,7 @@ struct SessionRowView: View {
                     .font(DesignTokens.Typography.title3)
                     .foregroundStyle(DesignTokens.Colors.textPrimary)
 
-                Text(session.activityTime.formattedDuration)
+                Text("\(session.punchCount) Times")
                     .font(.title2.bold())
                     .foregroundStyle(DesignTokens.Colors.accent)
             }
@@ -187,13 +314,8 @@ struct SessionRowView: View {
 }
 
 #Preview {
-    SummaryView()
+    let container = PreviewSupport.makeContainer()
+    return SummaryView()
         .preferredColorScheme(.dark)
-        .modelContainer(for: [
-            Category.self,
-            Session.self,
-            HeartRate.self,
-            TenseEvent.self,
-            Punch.self
-        ], inMemory: true)
+        .modelContainer(container)
 }

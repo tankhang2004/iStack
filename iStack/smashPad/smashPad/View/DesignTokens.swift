@@ -23,6 +23,15 @@ enum DesignTokens {
         static let chipFill = Color.white.opacity(0.12)
     }
 
+    /// Semantic colors used specifically in heart-rate / tense-event data visualization,
+    /// kept distinct from the app's purple accent so the chart reads clearly at a glance.
+    enum DataViz {
+        static let tense = Color(red: 1.0, green: 0.624, blue: 0.039)     // elevated heart rate
+        static let calm = Color(red: 0.392, green: 0.824, blue: 1.0)      // heart rate at/below resting
+        static let resting = Color(red: 0.188, green: 0.820, blue: 0.345) // resting HR reference line
+        static let marker = Color(red: 1.0, green: 0.231, blue: 0.188)    // punch event markers
+    }
+
     enum Spacing {
         static let xs: CGFloat = 4   // Icon-to-label gap
         static let sm: CGFloat = 8   // Inline gaps within a component
@@ -56,6 +65,19 @@ extension TimeInterval {
         let minutes = totalSeconds / 60
         let seconds = totalSeconds % 60
         return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    /// Formats a duration in seconds as "Xm Ys" (or just "Xs" under a minute),
+    /// e.g. 1152 -> "19m 12s", 45 -> "45s"
+    var formattedMinSecLetters: String {
+        let totalSeconds = Int(self.rounded())
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        if minutes > 0 {
+            return "\(minutes)m \(seconds)s"
+        } else {
+            return "\(seconds)s"
+        }
     }
 }
 
